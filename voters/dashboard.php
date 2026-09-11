@@ -8,6 +8,13 @@ if (!isset($_SESSION['vid'])) {
     exit();
 }
 
+// Enforce pre-vote workflow: if the legal/privacy/instructions wizard has not been
+// completed this session, send the voter there first.
+if (empty($_SESSION['pre_vote_workflow_completed'])) {
+    header("Location: pre_vote_workflow.php");
+    exit();
+}
+
 $vid = (int)$_SESSION['vid'];
 
 // Fetch latest voter record from SQLite database

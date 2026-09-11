@@ -9,7 +9,7 @@ session_start();
 
 // If already logged in and verified, redirect to voter dashboard
 if (isset($_SESSION['vid']) && isset($_SESSION['status']) && strtolower(trim($_SESSION['status'])) === 'approved' && !isset($_SESSION['temp_login_voter'])) {
-    header('Location: voters/dashboard.php');
+    header('Location: voters/pre_vote_workflow.php');
     exit();
 }
 
@@ -198,7 +198,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
         // Clear temporary staging session
         unset($_SESSION['temp_login_voter'], $_SESSION['login_otp'], $_SESSION['login_otp_expiry']);
 
-        header('Location: voters/dashboard.php');
+        // Ensure the pre-vote workflow is not skipped on fresh login
+        unset($_SESSION['pre_vote_workflow_completed']);
+
+        header('Location: voters/pre_vote_workflow.php');
         exit();
     }
 }
