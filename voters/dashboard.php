@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../includes/party_symbols.php';
 
 // Redirect to login if voter is not authenticated
 if (!isset($_SESSION['vid'])) {
@@ -289,10 +290,13 @@ try {
                                     <?php $sno = 1; foreach ($candidates_list as $candidate): ?>
                                         <?php
                                         $groupImg = trim($candidate['photo'] ?? $candidate['image'] ?? '');
-                                        $symbolPath = "../images/default.png";
 
-                                        if (!empty($groupImg) && file_exists(__DIR__ . "/../images/" . $groupImg)) {
+                                        // 'default.png' means "no custom symbol uploaded" -> use the
+                                        // real party logo from images/parties/ (generic badge if unknown)
+                                        if (!empty($groupImg) && $groupImg !== 'default.png' && file_exists(__DIR__ . "/../images/" . $groupImg)) {
                                             $symbolPath = "../images/" . $groupImg;
+                                        } else {
+                                            $symbolPath = "../" . party_symbol($candidate['party'] ?? '');
                                         }
                                         $candidate_id = (int)($candidate['id'] ?? $candidate['gid'] ?? 0);
                                         $candidate_name = htmlspecialchars($candidate['name'] ?? '');

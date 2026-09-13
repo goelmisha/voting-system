@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../includes/party_symbols.php';
 
 // Redirect to admin login if not authenticated
 if (!isset($_SESSION['admin_id']) && !isset($_SESSION['admin_logged_in'])) {
@@ -238,11 +239,13 @@ $pending_percentage = ($total_approved > 0) ? round((100 - $turnout_percentage),
                     <?php if (!empty($candidates_list)): ?>
                         <?php $sno_group = 1; foreach ($candidates_list as $candidate): ?>
                             <?php
-                            $symbol = "../images/default.png";
-                            if (!empty($candidate['photo'])) {
-                                if (file_exists(__DIR__ . "/../images/" . $candidate['photo'])) {
-                                    $symbol = "../images/" . $candidate['photo'];
-                                }
+                            // 'default.png' means "no custom symbol uploaded" -> use the
+                            // real party logo from images/parties/ (generic badge if unknown)
+                            $photo = $candidate['photo'] ?? '';
+                            if (!empty($photo) && $photo !== 'default.png' && file_exists(__DIR__ . "/../images/" . $photo)) {
+                                $symbol = "../images/" . $photo;
+                            } else {
+                                $symbol = "../" . party_symbol($candidate['party'] ?? ($candidate['name'] ?? ''));
                             }
                             ?>
                             <tr>

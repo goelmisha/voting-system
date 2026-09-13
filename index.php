@@ -323,8 +323,11 @@ $selected_constituency = $_SESSION['selected_constituency'] ?? '';
                             <p>Log in with your voter credentials and 2FA OTP to view certified Lok Sabha candidates and cast your ballot.</p>
                         </div>
                         <div class="mt-3">
-                            <a href="login.php" class="btn btn-custom mb-3">Voter Login &rarr;</a>
-                            <a href="register.php" class="btn btn-outline-custom">New Citizen Registration</a>
+                            <a href="login.php" class="btn btn-custom">Voter Login &rarr;</a>
+                            <p class="text-muted small mt-3 mb-0">
+                                Voter registration is handled offline by the Election Office.<br>
+                                Approved citizens may log in directly with their credentials.
+                            </p>
                         </div>
                     </div>
                 </div>

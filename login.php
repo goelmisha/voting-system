@@ -322,7 +322,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
                         <a href="login.php?show=password" class="btn btn-outline-secondary w-100 font-weight-bold">Use Email &amp; Password Instead</a>
 
                         <div class="text-center mt-3">
-                            <small class="text-muted">Haven't registered yet? <a href="register.php" style="color: blueviolet; font-weight: bold;">Register Here</a></small>
+                            <small class="text-muted">Registration is closed — voters are pre-enrolled by the Election Office.</small>
                             <br>
                             <a href="index.php" class="text-muted small mt-2 d-inline-block">← Back to Portal</a>
                         </div>
@@ -355,7 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
                         <div class="text-center mt-3">
                             <a href="login.php" class="text-muted small">← Use fingerprint / passkey instead</a>
                             <br>
-                            <small class="text-muted">Haven't registered yet? <a href="register.php" style="color: blueviolet; font-weight: bold;">Register Here</a></small>
+                            <small class="text-muted">Registration is closed — voters are pre-enrolled by the Election Office.</small>
                             <br>
                             <a href="index.php" class="text-muted small mt-2 d-inline-block">← Back to Portal</a>
                         </div>

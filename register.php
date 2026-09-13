@@ -1,4 +1,12 @@
 <?php
+// -----------------------------------------------------------------
+// Voter registration is DISABLED: the electorate is pre-enrolled by
+// the Election Office (see the seeded approved voters). Anyone landing
+// here is redirected to the login portal.
+// -----------------------------------------------------------------
+header('Location: login.php');
+exit();
+
 session_start();
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
