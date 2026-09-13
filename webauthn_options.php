@@ -214,7 +214,10 @@ switch ($action) {
             $_SESSION['voting']    = ((int)$row['has_voted'] === 1) ? 'yes' : 'no';
             $_SESSION['status']    = 'approved';
 
-            wa_json(['success' => true, 'redirect' => 'voters/dashboard.php']);
+            // Ensure the pre-vote workflow is not skipped on fresh login
+            unset($_SESSION['pre_vote_workflow_completed']);
+
+            wa_json(['success' => true, 'redirect' => 'voters/pre_vote_workflow.php']);
         } catch (Exception $e) {
             wa_json_error($e->getMessage(), 400, 'VERIFY_FAILED');
         }
