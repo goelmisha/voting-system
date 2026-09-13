@@ -133,7 +133,7 @@ document.getElementById('enrollBtn').addEventListener('click', async () => {
     btn.disabled = true;
 
     if (!window.isSecureContext || !window.PublicKeyCredential) {
-        show('WebAuthn / biometrics is not available here. Passkeys require localhost or an HTTPS connection. You can skip this step and enroll later from your dashboard.', 'danger');
+        show('WebAuthn / biometrics is not available here. Passkeys require HTTPS (e.g. a Cloudflare tunnel URL) or localhost. You can skip this step and enroll later from your dashboard.', 'danger');
         btn.disabled = false;
         return;
     }

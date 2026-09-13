@@ -442,7 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
         btn.disabled = true;
 
         if (!window.isSecureContext || !window.PublicKeyCredential) {
-            showAlert('Fingerprint / passkey sign-in needs <strong>localhost</strong> or an <strong>HTTPS</strong> connection.<br>Please use <a href="login.php?show=password" class="alert-link">Email &amp; Password</a> here.', 'warning');
+            showAlert('Fingerprint / passkey sign-in needs a secure connection — open the site via <strong>https://</strong> (e.g. your Cloudflare tunnel URL) or <strong>http://localhost</strong>.<br>Please use <a href="login.php?show=password" class="alert-link">Email &amp; Password</a> here.', 'warning');
             btn.disabled = false;
             return;
         }

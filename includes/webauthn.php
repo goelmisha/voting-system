@@ -57,13 +57,29 @@ function wa_is_https()
     if (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') {
         return true;
     }
-    if (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
+    // Behind a reverse proxy (Cloudflare Tunnel, ngrok, nginx, ...) the edge
+    // terminates TLS and forwards plain HTTP, so trust the forwarded headers.
+    // X-Forwarded-Proto may be a chain ("https,http") — take the first hop.
+    $xfp = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
+    if ($xfp === 'https') {
+        return true;
+    }
+    // Cloudflare-specific header (e.g. {"scheme":"https"}).
+    $cf = json_decode($_SERVER['HTTP_CF_VISITOR'] ?? '', true);
+    if (is_array($cf) && strtolower((string)($cf['scheme'] ?? '')) === 'https') {
+        return true;
+    }
+    if (strtolower($_SERVER['HTTP_FRONT_END_HTTPS'] ?? '') === 'on') {
         return true;
     }
     return ($_SERVER['SERVER_PORT'] ?? '') === '443';
 }
 
-/** Effective RP ID: hostname without port, lowercased. */
+/**
+ * Effective RP ID: hostname without port, lowercased, and with any
+ * trailing dot stripped (browsers send "trycloudflare.com." as a
+ * fully-qualified Host on some platforms).
+ */
 function wa_rp_id()
 {
     $host = wa_host_header();
@@ -71,7 +87,8 @@ function wa_rp_id()
         $end = strpos($host, ']');
         return strtolower($end ? substr($host, 1, $end - 1) : $host);
     }
-    return strtolower(explode(':', $host)[0]);
+    $host = strtolower(explode(':', $host)[0]);
+    return rtrim($host, '.');
 }
 
 /** Full origin (scheme://host[:port]) as the browser sees it. */

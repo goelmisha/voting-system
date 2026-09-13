@@ -129,7 +129,7 @@ document.getElementById('verifyFpBtn').addEventListener('click', async () => {
     btn.disabled = true;
 
     if (!window.isSecureContext || !window.PublicKeyCredential) {
-        show('Fingerprint verification needs localhost or HTTPS. Use Face Verification instead.', 'danger');
+        show('Fingerprint verification needs HTTPS (e.g. a Cloudflare tunnel URL) or localhost. Use Face Verification instead.', 'danger');
         btn.disabled = false;
         return;
     }

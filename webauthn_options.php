@@ -68,7 +68,7 @@ function wa_begin_guard()
     if (!wa_secure_context_ok()) {
         wa_json_error(
             'WebAuthn (fingerprint / passkey) only works on localhost or over HTTPS. ' .
-            'Open the site as http://localhost (or a deployed https:// address) to use it.',
+            'Open the site via its https:// address (e.g. a *.trycloudflare.com tunnel URL) or http://localhost to use it.',
             403, 'INSECURE_CONTEXT'
         );
     }

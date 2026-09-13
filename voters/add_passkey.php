@@ -152,7 +152,7 @@ document.getElementById('addBtn').addEventListener('click', async () => {
     btn.disabled = true;
 
     if (!window.isSecureContext || !window.PublicKeyCredential) {
-        show('Passkeys require localhost or an HTTPS connection — this device cannot enroll right now.', 'danger');
+        show('Passkeys require HTTPS (e.g. a Cloudflare tunnel URL) or localhost — this device cannot enroll right now.', 'danger');
         btn.disabled = false;
         return;
     }
