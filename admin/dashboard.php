@@ -183,6 +183,9 @@ try {
             <a href="enroll_voter.php" class="btn btn-warning btn-sm font-weight-bold mr-2" title="Admin-only: pre-enroll a voter's fingerprint at the booth">
                 🖐️ Register Biometrics / Enroll Voter
             </a>
+            <a href="verify_pair.php" class="btn btn-info btn-sm font-weight-bold mr-2" title="Generate a one-time code to pair the booth phone">
+                📱 Pair Booth Phone
+            </a>
             <span class="mr-3 text-white">Welcome, <strong><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Admin'); ?></strong></span>
             <a href="logout.php" class="btn btn-light btn-sm font-weight-bold">Logout</a>
         </div>
@@ -214,7 +217,7 @@ try {
             <!-- Card 3: Registered Parties -->
             <div class="col-md-3 mb-3">
                 <div class="stat-card active-card" id="card-parties" style="border-left-color: #17a2b8;" onclick="showSection('parties-section', '')">
-                    <p>Registered Parties</p>
+                    <p>Registered Candidates</p>
                     <h3 style="color: #17a2b8;"><?= $total_parties; ?></h3>
                 </div>
             </div>

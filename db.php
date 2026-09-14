@@ -48,4 +48,26 @@ try {
 } catch (PDOException $e) {
     // Non-fatal if audit table cannot be created.
 }
+
+// Booth companion-app stations (dedicated enrollment/voting phones).
+// Each station pairs once via a one-time code and then authenticates
+// API calls with a long-lived token (stored hashed, never in plain text).
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS booth_stations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            token_hash TEXT DEFAULT '',
+            pairing_token_hash TEXT DEFAULT '',
+            pairing_active INTEGER NOT NULL DEFAULT 0,
+            pairing_created_at DATETIME,
+            mode TEXT NOT NULL DEFAULT 'enroll',
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at DATETIME
+        )
+    ");
+} catch (PDOException $e) {
+    // Non-fatal if the booth table cannot be created.
+}
 ?>
