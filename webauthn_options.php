@@ -43,10 +43,27 @@ if (!is_array($body)) {
 }
 $action = trim($body['action'] ?? '');
 
-/** Current voter: logged-in session, or a voter mid signup (temp_fp_voter_id). */
+/**
+ * True when a logged-in election admin has armed a booth enrollment for a
+ * specific voter (admin/enroll_voter.php). Admins may NOT create passkeys
+ * for their own admin accounts — biometrics belong to voters only.
+ */
+function wa_is_admin_enrollment()
+{
+    return !empty($_SESSION['admin_id'])
+        && !empty($_SESSION['admin_enroll_vid'])
+        && (int)$_SESSION['admin_enroll_vid'] > 0;
+}
+
+/** Current voter: logged-in session, a voter mid signup (temp_fp_voter_id),
+ *  or a booth enrollment target armed by the logged-in election admin. */
 function wa_target_voter($pdo)
 {
     $id = $_SESSION['vid'] ?? $_SESSION['temp_fp_voter_id'] ?? null;
+
+    if ($id === null && wa_is_admin_enrollment()) {
+        $id = (int)$_SESSION['admin_enroll_vid'];
+    }
     if ($id === null) {
         return null;
     }
@@ -145,6 +162,23 @@ switch ($action) {
             if (isset($_SESSION['temp_fp_voter_id'])) {
                 unset($_SESSION['temp_fp_voter_id']);
             }
+
+            // Booth enrollment done -> disarm the admin target so the next
+            // scan is never accidentally saved against the same voter.
+            if (wa_is_admin_enrollment()) {
+                $done_vid  = (int)$_SESSION['admin_enroll_vid'];
+                $done_name = (string)($_SESSION['admin_enroll_name'] ?? '');
+                unset($_SESSION['admin_enroll_vid'], $_SESSION['admin_enroll_name']);
+                wa_json([
+                    'success'        => true,
+                    'credential_id'  => $cred['credential_id'],
+                    'booth_mode'     => true,
+                    'enrolled_vid'   => $done_vid,
+                    'enrolled_name'  => $done_name,
+                ]);
+                // no break
+            }
+
             wa_json(['success' => true, 'credential_id' => $cred['credential_id']]);
         } catch (Exception $e) {
             wa_json_error($e->getMessage(), 400, 'VERIFY_FAILED');

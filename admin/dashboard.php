@@ -50,6 +50,17 @@ try {
 $pending_votes = max(0, $total_approved - $total_votes_cast);
 $turnout_percentage = ($total_approved > 0) ? round(($total_votes_cast / $total_approved) * 100, 1) : 0;
 $pending_percentage = ($total_approved > 0) ? round((100 - $turnout_percentage), 1) : 0;
+
+// Biometric enrollment status per voter (for the voters table + booth console count)
+$enrolled_map = [];
+try {
+    $pk_stmt = $pdo->query("SELECT DISTINCT voter_id FROM passkeys");
+    foreach ($pk_stmt->fetchAll(PDO::FETCH_ASSOC) as $pk_row) {
+        $enrolled_map[(int)$pk_row['voter_id']] = true;
+    }
+} catch (PDOException $e) {
+    $enrolled_map = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -169,6 +180,9 @@ $pending_percentage = ($total_approved > 0) ? round((100 - $turnout_percentage),
     <div class="container-fluid header">
         <h4 class="m-0 font-weight-bold">Online Voting System — Admin Panel</h4>
         <div>
+            <a href="enroll_voter.php" class="btn btn-warning btn-sm font-weight-bold mr-2" title="Admin-only: pre-enroll a voter's fingerprint at the booth">
+                🖐️ Register Biometrics / Enroll Voter
+            </a>
             <span class="mr-3 text-white">Welcome, <strong><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Admin'); ?></strong></span>
             <a href="logout.php" class="btn btn-light btn-sm font-weight-bold">Logout</a>
         </div>
@@ -450,11 +464,12 @@ $pending_percentage = ($total_approved > 0) ? round((100 - $turnout_percentage),
                     <tr>
                         <th style="width: 5%;">S.No.</th>
                         <th style="width: 10%;">Photo</th>
-                        <th style="width: 22%;">Name</th>
-                        <th style="width: 25%;">Email</th>
-                        <th style="width: 18%;">Voter ID (EPIC)</th>
+                        <th style="width: 20%;">Name</th>
+                        <th style="width: 20%;">Email</th>
+                        <th style="width: 15%;">Voter ID (EPIC)</th>
                         <th style="width: 10%;">Approval</th>
                         <th style="width: 10%;">Voting Status</th>
+                        <th style="width: 10%;">Biometrics</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -498,10 +513,25 @@ $pending_percentage = ($total_approved > 0) ? round((100 - $turnout_percentage),
                                 <span class="badge badge-secondary px-2 py-1">Not Voted</span>
                             <?php endif; ?>
                         </td>
+                        <td class="align-middle">
+                            <?php if (isset($enrolled_map[(int)$voter['id']])): ?>
+                                <a href="enroll_voter.php?vid=<?= (int)$voter['id']; ?>"
+                                   class="badge badge-success px-2 py-1"
+                                   style="text-decoration: none;"
+                                   title="Manage this voter's biometrics at the booth">
+                                    ✔ Enrolled</a>
+                            <?php else: ?>
+                                <a href="enroll_voter.php?vid=<?= (int)$voter['id']; ?>"
+                                   class="badge badge-primary px-2 py-1"
+                                   style="text-decoration: none;"
+                                   title="Pre-enroll this voter's biometrics at the booth">
+                                    + Enroll</a>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="7" class="text-center py-3">No registered voters found.</td></tr>
+                        <tr><td colspan="8" class="text-center py-3">No registered voters found.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>

@@ -53,20 +53,32 @@ Keep the demo tab frontmost and pre-approve camera access so the face-verify scr
 
 ### Act 2 — Admin console
 
-1. Scroll to the discreet officer section → `admin/login.php` → `admin` / `admin123`
+1. Scroll to the discreet officer section → `admin/login.php` → `superadmin` / `SuperSecret123!` (also works: `admin` / `admin123`)
 2. Approve a `pending` voter → show that voter can now log in
-3. Show **live results / turnout** for the constituency
+3. 🖐️ **Booth biometric enrollment** — the security talking point:
 
-### Act 3 — Passkeys (optional closer)
+   > "Voters can't self-register online for security reasons — the election admin pre-enrolls them at the booth."
 
-1. Logged in as voter → add a passkey (enrollment) → logout
-2. Login screen → **fingerprint sign-in works** (localhost is a secure context, so WebAuthn runs fine under `php -S`) — including "a phone or tablet" cross-device approval if you want to flex
+   Click **Register Biometrics / Enroll Voter** in the dashboard header (admin-only — the public voter pages have no enrollment entry point). Then either:
+
+   - **Existing voter (1A):** pick them from the dropdown → **Arm Booth** → citizen scans on the booth device → passkey is bound to *their* account and the booth auto-disarms, or
+   - **Walk-in citizen not in the list (1B):** fill name / email / EPIC / temp password (auto-suggested if blank) → **Onboard Citizen & Arm Booth** → their record is created (default **Approved now**, since the ID was verified in person) and you land straight on the scan step → citizen scans.
+
+   Hand the citizen a login slip (email + temp password) — they sign in later with fingerprint or password + OTP. Duplicate email/EPIC entries are rejected with a pointer to the existing record.
+
+4. Show **live results / turnout** for the constituency
+
+### Act 3 — Passkey sign-in (optional closer)
+
+1. Logout → back to the voter login screen
+2. **Continue with Fingerprint / Passkey** → the passkey the admin enrolled at the booth just works (localhost is a secure context, so WebAuthn runs fine under `php -S`) — including "a phone or tablet" cross-device approval if you want to flex
+3. If asked: voters can manage/rename devices later from **Manage Fingerprints / Passkeys** on their dashboard — but *enrollment* stays a booth/admin activity
 
 ---
 
 ## One-liner narrative
 
-> "Offline registration, online voting — every ballot behind fingerprint + OTP + face match, with a server-enforced one-person-one-vote and an audit trail."
+> "Offline registration, online voting — the election admin pre-enrolls each voter at the booth, and every ballot sits behind fingerprint + OTP + face match, with a server-enforced one-person-one-vote and an audit trail."
 
 ---
 
@@ -89,6 +101,7 @@ Then in the browser:
 2. Enter OTP from your inbox
 3. Upload a selfie in **Edit Profile** (one-time, enables face match)
 4. Complete the declaration → **face scan** → **vote** → try voting again (should be blocked)
-5. `admin` / `admin123` at `admin/login.php` → check results show your vote
+5. `superadmin` / `SuperSecret123!` at `admin/login.php` → check results show your vote
+6. (Optional) Dashboard → **Register Biometrics / Enroll Voter** → onboard a walk-in citizen (or arm an existing one) → scan their fingerprint → booth disarms → logout → sign in with fingerprint
 
-If all 5 pass, the app is demo-ready.
+If all steps pass, the app is demo-ready.
