@@ -2,6 +2,22 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
+// --- Load .env credentials safely ---
+if (class_exists('Dotenv\Dotenv') && file_exists(__DIR__ . '/.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->safeLoad();
+} elseif (file_exists(__DIR__ . '/.env')) {
+    // Native PHP fallback if phpdotenv package isn't installed
+    $envVars = parse_ini_file(__DIR__ . '/.env');
+    if ($envVars !== false) {
+        foreach ($envVars as $key => $val) {
+            putenv("$key=$val");
+            $_ENV[$key] = $val;
+            $_SERVER[$key] = $val;
+        }
+    }
+}
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -35,16 +51,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'cancel_login') {
 function send_login_email_otp($to_email, $to_name, $otp) {
     $mail = new PHPMailer(true);
     try {
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = 'jahnvikarnatac04@gmail.com';
-        // Paste your 16-character Google App Password here (no spaces)
-        $mail->Password   = 'zwtczjgjkqnulyrc';  
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $smtp_user = getenv('SMTP_USER') ?: ($_ENV['SMTP_USER'] ?? '');
+        $smtp_pass = getenv('SMTP_PASS') ?: ($_ENV['SMTP_PASS'] ?? '');
+        $smtp_host = getenv('SMTP_HOST') ?: ($_ENV['SMTP_HOST'] ?? 'smtp.gmail.com');
+        $smtp_port = getenv('SMTP_PORT') ?: ($_ENV['SMTP_PORT'] ?? 587);
 
-        $mail->setFrom('jahnvikarnatac04@gmail.com', 'Online Voting System');
+        $mail->isSMTP();
+        $mail->Host       = $smtp_host;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $smtp_user;
+        $mail->Password   = $smtp_pass;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = (int)$smtp_port;
+
+        $mail->setFrom($smtp_user, 'Online Voting System');
         $mail->addAddress($to_email, $to_name);
 
         $mail->isHTML(true);
@@ -71,7 +91,7 @@ function send_login_email_otp($to_email, $to_name, $otp) {
  * Helper: Dispatch Live Mobile OTP via Fast2SMS
  */
 function send_login_sms_otp($mobile_number, $otp) {
-    $apiKey = "YOUR_FAST2SMS_API_KEY"; // Enter your Fast2SMS API Key
+    $apiKey = getenv('FAST2SMS_API_KEY') ?: ($_ENV['FAST2SMS_API_KEY'] ?? 'YOUR_FAST2SMS_API_KEY');
 
     $clean_mobile = preg_replace('/[^0-9]/', '', $mobile_number);
     if (strlen($clean_mobile) === 12 && substr($clean_mobile, 0, 2) === '91') {
@@ -102,9 +122,7 @@ function send_login_sms_otp($mobile_number, $otp) {
     return true;
 }
 
-
 // STEP 1: Verify Credentials & Dispatch Live Login OTP
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $email = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
@@ -457,9 +475,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
                 timeout: options.timeout,
                 userVerification: options.userVerification
             };
-            // No allowCredentials list -> the browser shows all your passkeys for
-            // this site: this device's fingerprint AND "A phone or tablet"
-            // (Google-style cross-device approval) / security keys.
 
             showAlert('Touch your fingerprint sensor — or choose <strong>"A phone or tablet"</strong> in the prompt to approve from another device.', 'primary');
             const assertion = await navigator.credentials.get({ publicKey });
