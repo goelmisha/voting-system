@@ -70,13 +70,10 @@ try {
     <title>Admin Dashboard - Online Voting System</title>
 
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root {
-            --primary-color: blueviolet;
-            --primary-hover: #701eb8;
-        }
 
         body {
             background-color: #f8f9fc;
@@ -161,18 +158,8 @@ try {
             border: 1px solid #ddd;
             background-color: #f0f0f0;
         }
-
-        .btn-custom {
-            background-color: var(--primary-color);
-            color: #ffffff;
-            font-weight: bold;
-        }
-
-        .btn-custom:hover {
-            background-color: var(--primary-hover);
-            color: #ffffff;
-        }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
 
@@ -243,6 +230,7 @@ try {
                 </div>
             </div>
 
+            <div class="table-responsive">
             <table class="table table-bordered table-striped text-center align-middle m-0">
                 <thead class="thead-dark">
                     <tr>
@@ -286,6 +274,7 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
+            </div>
         </div>
 
         <!-- SECTION 2: Citizen ID Verification Panel -->
@@ -295,6 +284,7 @@ try {
                 <span class="badge badge-warning px-3 py-2">Pending Review: <?= $total_pending_verifications; ?></span>
             </div>
 
+            <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle m-0">
                 <thead class="thead-dark">
                     <tr>
@@ -360,6 +350,7 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
+            </div>
         </div>
 
         <!-- SECTION 3: Split Ratio Gauge Bar -->
@@ -462,6 +453,7 @@ try {
                 </div>
             </div>
 
+            <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle m-0" id="voters-table">
                 <thead class="thead-dark">
                     <tr>
@@ -530,6 +522,7 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
+            </div>
         </div>
 
     </div>

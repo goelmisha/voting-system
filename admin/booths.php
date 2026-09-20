@@ -127,8 +127,8 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booths &amp; Kiosks - Admin - Online Voting System</title>
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <style>
-        :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
         body { background-color: #f8f9fc; font-family: Arial, sans-serif; }
         .header {
             background-color: var(--primary-color); color: #fff; height: 9vh;
@@ -136,11 +136,11 @@ try {
             padding: 0 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         .btn-custom { background-color: var(--primary-color); color: #fff; font-weight: bold; border: none; }
-        .btn-custom:hover { background-color: var(--primary-hover); color: #fff; }
         .panel { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.05); }
         .panel-header { border-top: 5px solid var(--primary-color); border-radius: 12px 12px 0 0; }
         code.booth-code { background: #f3e8ff; color: var(--primary-color); padding: 2px 8px; border-radius: 6px; font-weight: bold; }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
 
@@ -185,28 +185,33 @@ try {
                     <?php endif; ?>
                     <div class="form-group mb-2">
                         <input type="text" name="code" class="form-control form-control-sm"
+                               aria-label="Booth code"
                                placeholder="Booth code (e.g. BOOTH-007) *"
                                value="<?= htmlspecialchars($edit_booth['code'] ?? ($_POST['code'] ?? '')); ?>"
                                <?= $edit_booth ? 'readonly' : 'required'; ?>>
                     </div>
                     <div class="form-group mb-2">
                         <input type="text" name="name" class="form-control form-control-sm"
+                               aria-label="Station name"
                                placeholder="Station name *" required
                                value="<?= htmlspecialchars($edit_booth['name'] ?? ($_POST['name'] ?? '')); ?>">
                     </div>
                     <div class="form-group mb-2">
                         <input type="text" name="state" class="form-control form-control-sm"
+                               aria-label="State or union territory"
                                placeholder="State / UT"
                                value="<?= htmlspecialchars($edit_booth['state'] ?? ($_POST['state'] ?? '')); ?>">
                     </div>
                     <div class="form-group mb-2">
                         <input type="text" name="constituency" class="form-control form-control-sm"
+                               aria-label="Constituency"
                                placeholder="Constituency (e.g. Varanasi (PC-77))"
                                value="<?= htmlspecialchars($edit_booth['constituency'] ?? ($_POST['constituency'] ?? '')); ?>">
                         <small class="text-muted">Must match the citizen's constituency exactly to issue a ballot.</small>
                     </div>
                     <div class="form-group mb-2">
                         <input type="text" name="pin" class="form-control form-control-sm"
+                               aria-label="Booth PIN"
                                placeholder="<?= $edit_booth ? 'New PIN (leave blank to keep current)' : 'Booth PIN (min 6) *'; ?>"
                                <?= $edit_booth ? '' : 'minlength="6" required'; ?>>
                     </div>
@@ -238,6 +243,7 @@ try {
                     </div>
                 <?php else: ?>
                     <div class="table-responsive">
+                        <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0">
                             <thead class="thead-light">
                                 <tr>
@@ -278,6 +284,7 @@ try {
                             <?php endforeach; ?>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>

@@ -12,6 +12,7 @@
  * ---------------------------------------------------------------
  */
 require_once __DIR__ . '/_kiosk.php';
+require_once __DIR__ . '/../includes/i18n.php';
 kiosk_require_unlocked();
 
 $booth = kiosk_booth();
@@ -31,25 +32,21 @@ $name     = $voter['fullname'] ?? ('Voter #' . $voter_id);
 $candidates = $el['ok'] ? kiosk_candidates($pdo, $el['constituency']) : [];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= current_lang() ?>"<?= i18n_is_rtl() ? ' dir="rtl"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Ballot — <?= htmlspecialchars($booth['name']); ?></title>
+    <title><?= te('kiosk.ballot_title') ?><?= htmlspecialchars($booth['name']); ?></title>
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <style>
-        :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
         body { background-color: #f8f9fc; font-family: Arial, sans-serif; padding-bottom: 40px; }
         .header {
             background-color: var(--primary-color); color: #fff;
             display: flex; align-items: center; justify-content: space-between;
             padding: 12px 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             position: sticky; top: 0; z-index: 20;
-        }
-        .booth-chip {
-            background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
-            border-radius: 20px; padding: 4px 14px; font-size: .85rem; font-weight: bold;
         }
         .ballot-card {
             background: #fff; border: 1px solid #e0e0e0; border-radius: 12px;
@@ -67,23 +64,19 @@ $candidates = $el['ok'] ? kiosk_candidates($pdo, $el['constituency']) : [];
         .cand-name { font-weight: bold; font-size: 1.05rem; }
         .cand-party { color: #555; font-size: .9rem; }
         .btn-custom { background-color: var(--primary-color); color: #fff; font-weight: bold; border: none; }
-        .btn-custom:hover { background-color: var(--primary-hover); color: #fff; }
-        .btn-custom:disabled { background-color: #c9b8dc; cursor: not-allowed; }
-        .voter-chip {
-            background: #f3e8ff; border: 1px solid #d1c4e9; border-radius: 20px;
-            padding: 6px 16px; font-weight: bold; color: var(--primary-color); display: inline-block;
-        }
         .timer-pill { background: #fff3cd; border: 1px solid #ffe08a; border-radius: 20px; padding: 4px 12px; font-size: .85rem; font-weight: bold; }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
+<?php render_lang_switcher(); ?>
 
 <div class="header">
     <div>
-        <div class="font-weight-bold">🗳️ Ballot</div>
+        <div class="font-weight-bold"><?= te('kiosk.ballot_brand') ?></div>
         <span class="booth-chip">📍 <?= htmlspecialchars($booth['name']); ?> · <?= htmlspecialchars($booth['code']); ?></span>
     </div>
-    <a href="index.php?mode=clear" class="btn btn-light btn-sm font-weight-bold">Cancel</a>
+    <a href="index.php?mode=clear" class="btn btn-light btn-sm font-weight-bold"><?= te('kiosk.cancel') ?></a>
 </div>
 
 <div class="container" style="max-width: 720px;">
@@ -99,18 +92,17 @@ $candidates = $el['ok'] ? kiosk_candidates($pdo, $el['constituency']) : [];
 
         <div class="ballot-card">
             <div class="alert alert-warning mb-0 text-center">
-                <strong>No ballot available at this booth.</strong><br>
+                <strong><?= te('kiosk.no_ballot_available') ?></strong><br>
                 <span class="small"><?= htmlspecialchars($el['reason']); ?></span>
             </div>
-            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-3">Back to search</a>
+            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-3"><?= te('kiosk.back_to_search') ?></a>
         </div>
 
     <?php elseif (empty($candidates)): ?>
 
         <div class="ballot-card">
             <div class="alert alert-info mb-0 text-center small">
-                No candidates are configured for the constituency
-                <strong><?= htmlspecialchars($el['constituency']); ?></strong>.
+                <?= te('kiosk.no_candidates') ?><strong><?= htmlspecialchars($el['constituency']); ?></strong>.
                 Ask election staff to seed candidates for this constituency.
             </div>
             <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-3">Back to search</a>
@@ -119,7 +111,7 @@ $candidates = $el['ok'] ? kiosk_candidates($pdo, $el['constituency']) : [];
     <?php else: ?>
 
         <div class="ballot-card">
-            <h5 class="font-weight-bold mb-1">Parliamentary Constituency</h5>
+            <h5 class="font-weight-bold mb-1"><?= te('kiosk.constituency_label') ?></h5>
             <p class="text-muted small mb-3"><?= htmlspecialchars($el['constituency']); ?></p>
 
             <form method="POST" action="vote.php" id="ballotForm">
@@ -136,11 +128,9 @@ $candidates = $el['ok'] ? kiosk_candidates($pdo, $el['constituency']) : [];
                 <?php endforeach; ?>
 
                 <button type="submit" id="submitBtn" class="btn btn-custom w-100 py-3 mt-3" disabled>
-                    ✅ Confirm &amp; Cast Vote
-                </button>
+                    <?= te('kiosk.confirm_vote') ?></button>
                 <p class="text-center text-muted small mt-2 mb-0">
-                    Your choice is secret. Records show only that you voted, never who for.
-                </p>
+                    <?= te('kiosk.secrecy_note') ?></p>
             </form>
         </div>
 

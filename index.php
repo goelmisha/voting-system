@@ -34,13 +34,9 @@ $selected_constituency = $_SESSION['selected_constituency'] ?? '';
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/app.css">
     
     <style>
-        :root {
-            --primary-color: blueviolet;
-            --primary-hover: #701eb8;
-            --bg-light: #f8f9fa;
-        }
 
         body {
             background-color: var(--bg-light);
@@ -160,7 +156,7 @@ $selected_constituency = $_SESSION['selected_constituency'] ?? '';
             text-decoration: none;
         }
 
-        /* Discreet Admin Section */
+                                    
         .discreet-admin-section {
             margin-top: 100px;
             padding: 40px 20px 20px 20px;
@@ -214,6 +210,7 @@ $selected_constituency = $_SESSION['selected_constituency'] ?? '';
             text-decoration: underline;
         }
     </style>
+    <link rel="stylesheet" href="css/ui.css">
 </head>
 <body>
 

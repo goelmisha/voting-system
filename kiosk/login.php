@@ -9,6 +9,7 @@
  * ---------------------------------------------------------------
  */
 require_once __DIR__ . '/_kiosk.php';
+require_once __DIR__ . '/../includes/i18n.php';
 
 // Already unlocked → straight to the kiosk.
 if (kiosk_is_unlocked()) {
@@ -65,15 +66,15 @@ if (!$lockout && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_b
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= current_lang() ?>"<?= i18n_is_rtl() ? ' dir="rtl"' : '' ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Booth Kiosk — Unlock</title>
+    <title><?= te('kiosk.login_title') ?></title>
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <style>
-        :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
         body {
             background-color: #f8f9fc; font-family: Arial, sans-serif;
             min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between;
@@ -89,28 +90,28 @@ if (!$lockout && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_b
             box-shadow: 0 6px 20px rgba(0,0,0,0.08); border-top: 5px solid var(--primary-color);
         }
         .btn-custom { background-color: var(--primary-color); color: #fff; font-weight: bold; border: none; }
-        .btn-custom:hover { background-color: var(--primary-hover); color: #fff; }
         .kiosk-icon { font-size: 48px; }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
+<?php render_lang_switcher(); ?>
 
 <div class="container-fluid header">
-    <h3 class="m-0 font-weight-bold">🖐️ Booth Biometric Kiosk</h3>
+    <h3 class="m-0 font-weight-bold"><?= te('kiosk.brand') ?></h3>
 </div>
 
 <main class="container">
     <div class="unlock-card">
         <div class="text-center mb-3">
             <div class="kiosk-icon">📍</div>
-            <h4 class="font-weight-bold mb-1">Unlock This Booth</h4>
+            <h4 class="font-weight-bold mb-1"><?= te('kiosk.login_heading') ?></h4>
             <p class="text-muted small mb-0">
-                Enter this polling station's booth code and PIN to enroll or verify fingerprints on this phone.
-            </p>
+                <?= te('kiosk.login_intro') ?></p>
         </div>
 
         <?php if ($timeout && !$error): ?>
-            <div class="alert alert-info py-2 text-center small">This kiosk was locked after inactivity. Please unlock again.</div>
+            <div class="alert alert-info py-2 text-center small"><?= te('kiosk.login_locked') ?></div>
         <?php endif; ?>
 
         <?php if (!empty($error)): ?>
@@ -119,23 +120,22 @@ if (!$lockout && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_b
 
         <form method="POST" action="" autocomplete="off">
             <div class="form-group mb-3">
-                <label for="booth_code"><strong>Booth code</strong></label>
+                <label for="booth_code"><strong><?= te('kiosk.booth_code') ?></strong></label>
                 <input type="text" name="booth_code" id="booth_code" class="form-control"
-                       placeholder="e.g. BOOTH-001" required autofocus autocapitalize="characters"
+                       placeholder="<?= te('kiosk.booth_code_ph') ?>" required autofocus autocapitalize="characters"
                        value="<?= htmlspecialchars($_POST['booth_code'] ?? ''); ?>">
             </div>
             <div class="form-group mb-4">
-                <label for="booth_pin"><strong>Booth PIN</strong></label>
+                <label for="booth_pin"><strong><?= te('kiosk.booth_pin') ?></strong></label>
                 <input type="password" name="booth_pin" id="booth_pin" class="form-control"
-                       placeholder="••••••" required inputmode="numeric">
+                       placeholder="<?= te('kiosk.booth_pin_ph') ?>" required inputmode="numeric">
             </div>
             <button type="submit" name="unlock_btn" class="btn btn-custom w-100 py-2" <?= $lockout ? 'disabled' : ''; ?>>
-                Unlock Kiosk
-            </button>
+                <?= te('kiosk.unlock_btn') ?></button>
         </form>
 
         <div class="text-center mt-3">
-            <a href="../admin/login.php" class="text-muted small">Election staff → Admin console</a>
+            <a href="../admin/login.php" class="text-muted small"><?= te('kiosk.staff_link') ?></a>
         </div>
     </div>
 </main>

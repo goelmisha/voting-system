@@ -20,6 +20,7 @@
  */
 
 require_once __DIR__ . '/_kiosk.php';
+require_once __DIR__ . '/../includes/i18n.php';
 kiosk_require_unlocked();
 
 $booth = kiosk_booth();
@@ -43,18 +44,18 @@ $has_reference   = $reference_photo !== '';
 $name            = $voter['fullname'] ?? ('Voter #' . $target_id);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= current_lang() ?>"<?= i18n_is_rtl() ? ' dir="rtl"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Face Check — <?= htmlspecialchars($booth['name']); ?></title>
+    <title><?= te('kiosk.face_title') ?><?= htmlspecialchars($booth['name']); ?></title>
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <!-- face-api.js vendored locally; no internet needed at runtime -->
     <script src="../js/face-api.min.js"></script>
     <script src="../js/blink-liveness.js"></script>
     <style>
-        :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
         body { background-color: #f8f9fc; font-family: Arial, sans-serif; padding-bottom: 40px; }
         .header {
             background-color: var(--primary-color); color: #fff;
@@ -62,18 +63,10 @@ $name            = $voter['fullname'] ?? ('Voter #' . $target_id);
             padding: 12px 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             position: sticky; top: 0; z-index: 20;
         }
-        .booth-chip {
-            background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
-            border-radius: 20px; padding: 4px 14px; font-size: .85rem; font-weight: bold;
-        }
         .face-card {
             background: #fff; border: 1px solid #e0e0e0; border-radius: 12px;
             padding: 22px; margin-top: 22px; box-shadow: 0 6px 20px rgba(0,0,0,0.06);
             border-top: 5px solid #0d6efd;
-        }
-        .voter-chip {
-            background: #f3e8ff; border: 1px solid #d1c4e9; border-radius: 20px;
-            padding: 6px 16px; font-weight: bold; color: var(--primary-color); display: inline-block;
         }
         .ref-photo {
             width: 110px; height: 110px; object-fit: cover; border-radius: 50%;
@@ -90,21 +83,21 @@ $name            = $voter['fullname'] ?? ('Voter #' . $target_id);
             padding: 6px 14px; border-radius: 20px; white-space: nowrap; pointer-events: none;
         }
         .btn-custom { background-color: var(--primary-color); color: #fff; font-weight: bold; border: none; }
-        .btn-custom:hover { background-color: var(--primary-hover); color: #fff; }
-        .btn-custom:disabled { background-color: #c9b8dc; cursor: not-allowed; }
         .step-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #dee2e6; margin: 0 3px; }
         .step-dot.active { background: var(--primary-color); }
         .step-dot.done { background: #28a745; }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
+<?php render_lang_switcher(); ?>
 
 <div class="header">
     <div>
-        <div class="font-weight-bold">🙂 Face Check</div>
+        <div class="font-weight-bold"><?= te('kiosk.face_brand') ?></div>
         <span class="booth-chip">📍 <?= htmlspecialchars($booth['name']); ?> · <?= htmlspecialchars($booth['code']); ?></span>
     </div>
-    <a href="index.php" class="btn btn-light btn-sm font-weight-bold">Cancel</a>
+    <a href="index.php" class="btn btn-light btn-sm font-weight-bold"><?= te('kiosk.cancel') ?></a>
 </div>
 
 <div class="container" style="max-width: 640px;">
@@ -113,38 +106,33 @@ $name            = $voter['fullname'] ?? ('Voter #' . $target_id);
 
         <div class="mb-2">
             <?php if ($has_reference): ?>
-                <img id="refImg" src="<?= htmlspecialchars($reference_photo); ?>" alt="Reference photo" class="ref-photo">
-                <p class="small text-muted mb-0 mt-1">Reference photo on file</p>
+                <img id="refImg" src="<?= htmlspecialchars($reference_photo); ?>" alt="<?= te('kiosk.ref_alt') ?>" class="ref-photo">
+                <p class="small text-muted mb-0 mt-1"><?= te('kiosk.ref_on_file') ?></p>
             <?php else: ?>
                 <img id="refImg" src="" alt="" class="ref-photo d-none">
-                <p class="small text-muted mb-0">No usable reference photo on file yet.</p>
+                <p class="small text-muted mb-0"><?= te('kiosk.ref_missing') ?></p>
             <?php endif; ?>
         </div>
 
         <div class="video-wrap d-none" id="videoWrap">
             <video id="webcam" autoplay muted playsinline></video>
-            <div class="liveness-tag" id="livenessTag">Preparing…</div>
+            <div class="liveness-tag" id="livenessTag"><?= te('kiosk.preparing') ?></div>
         </div>
 
         <div class="my-3">
             <div id="statusAlert" class="alert alert-info py-2 d-inline-block px-4 mb-1">
-                Loading facial recognition models…
-            </div>
+                <?= te('kiosk.loading_models') ?></div>
         </div>
 
         <div class="mt-2">
-            <button id="startBtn" class="btn btn-custom font-weight-bold px-4 py-2" disabled>Start Face Check</button>
-            <button id="captureRefBtn" class="btn btn-outline-primary font-weight-bold px-3 py-2 ml-2 d-none">Capture Reference Photo</button>
+            <button id="startBtn" class="btn btn-custom font-weight-bold px-4 py-2" disabled><?= te('kiosk.start_face') ?></button>
+            <button id="captureRefBtn" class="btn btn-outline-primary font-weight-bold px-3 py-2 ml-2 d-none"><?= te('kiosk.capture_ref') ?></button>
         </div>
 
         <div class="mt-3 small">
-            <span class="step-dot" id="s1"></span> Reference ready
-            <span class="step-dot" id="s2"></span> Blink twice
-            <span class="step-dot" id="s3"></span> Server match
-        </div>
+            <span class="step-dot" id="s1"></span> <?= te('kiosk.ref_ready') ?><span class="step-dot" id="s2"></span> <?= te('kiosk.blink_twice') ?><span class="step-dot" id="s3"></span> <?= te('kiosk.server_match') ?></div>
         <div class="mt-2 small text-muted">
-            Fingerprint is still required after this. Both are checked for the same citizen.
-        </div>
+            <?= te('kiosk.fp_still_required') ?></div>
     </div>
 </div>
 

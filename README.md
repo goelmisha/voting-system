@@ -185,14 +185,74 @@ in a later commit does not remove it from history. See
 ├── admin/                     # Admin login, dashboard, voter approval, results, booths
 ├── kiosk/                     # Phone booth terminal: unlock, enroll, verify, ballot, vote
 ├── voters/                    # Voter dashboard (view-only), pre-vote workflow, identity verification (face/fingerprint)
-├── includes/                  # webauthn.php, party_symbols.php, connection.php
+├── includes/                  # webauthn.php, party_symbols.php, i18n.php, connection.php
+├── lang/                      # Translation catalogues (en.php, hi.php)
 ├── images/                    # Voter photos, candidate photos, party logos
 ├── demo.md                    # short end-to-end demo guide
 ├── demo-two-booths.md         # two-booth / regional-rules presentation script
-├── scripts/                   # fetch_party_logos.php, demo/ and tests/ helpers
-├── bootstrap/, css/, js/      # Front-end assets
-└── .github/workflows/php.yml  # CI: composer validate + install
+├── scripts/                   # fetch_party_logos.php, demo/, tests/ and dev/ helpers
+├── css/                       # app.css (shared tokens/components), ui.css (responsive/a11y)
+├── bootstrap/, js/            # Vendored Bootstrap 4 and face-api/models
+└── .github/workflows/ci.yml   # CI: process gates, composer validate, PHP lint, e2e tests
 ```
+
+## Front-end stylesheets
+
+Pages no longer carry a private copy of the same CSS. Two shared sheets are
+linked by every page:
+
+| File | Loaded | Purpose |
+|---|---|---|
+| `css/app.css` | after Bootstrap, **before** the page's own `<style>` | Design tokens (`--primary-color`, `--bg-light`, …) and the components that were duplicated everywhere (`.header`, `.btn-custom`, `footer`, the booth/voter chips) |
+| `css/ui.css` | **after** the page's own `<style>` | Progressive enhancement only: responsive header, small-screen overflow guards, keyboard focus rings, coarse-pointer tap targets, reduced motion, print rules, the language strip |
+
+The load order is deliberate. `app.css` comes first so any page can still
+override a shared rule; `ui.css` comes last so its media queries can win over a
+page-level `height: 9vh` of the same specificity.
+
+## Languages
+
+English and Hindi ship by default. The switcher appears as a strip above the
+header on the **booth kiosk** pages; the choice is remembered in the session and
+in a `voting_lang` cookie, and `<html lang>` follows it.
+
+Adding a language is one file:
+
+```bash
+cp lang/en.php lang/ta.php     # then translate the values
+```
+
+The switcher discovers `lang/*.php` automatically, so a new catalogue shows up
+with no code change. Keys missing from a catalogue fall back to English and then
+to the key itself, so a partly translated file degrades to English rather than
+rendering blank — translations can be added a key at a time.
+
+**Coverage:** the booth kiosk (`kiosk/login.php`, `index.php`, `face_verify.php`,
+`ballot.php`, `vote.php`) is fully translated. `index.php`, `login.php`, the
+`voters/*` portal pages and the admin console are still English-only — to
+localise them, wrap their strings in `te('your.key')` and add the key to
+`lang/*.php`.
+
+Two strings on the kiosk are deliberately left in English: they are sentence
+fragments split by an interpolated value (`kiosk.no_candidates_hint`,
+`kiosk.fp_on_file`).
+
+### Checking a UI change visually
+
+`scripts/dev/` has two development-only helpers that screenshot every page
+(including authenticated ones, via crafted sessions) and pixel-diff two runs:
+
+```bash
+php scripts/dev/ui_screenshots.php before   # 36 screenshots at desktop + phone widths
+#  ...make your CSS change...
+php scripts/dev/ui_screenshots.php after
+php scripts/dev/ui_diff.php before after    # per-page changed-pixel percentage
+```
+
+Use them to prove a stylesheet refactor is rendering-neutral, or to see exactly
+which region a deliberate change moved. They require Chrome and the GD
+extension, write only to the system temp directory, and are not part of the
+application.
 
 ## Security notes
 

@@ -98,8 +98,8 @@ $old = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Onboard Citizen - Admin - Online Voting System</title>
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <style>
-        :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
         body { background-color: #f8f9fc; font-family: Arial, sans-serif; }
         .header {
             background-color: var(--primary-color); color: #fff; height: 9vh;
@@ -112,9 +112,9 @@ $old = [
             box-shadow: 0 6px 20px rgba(0,0,0,0.06);
         }
         .btn-custom { background-color: var(--primary-color); color: #fff; font-weight: bold; border: none; }
-        .btn-custom:hover { background-color: var(--primary-hover); color: #fff; }
         code.cred { background: #f3e8ff; color: var(--primary-color); padding: 2px 8px; border-radius: 6px; font-weight: bold; }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
 
@@ -174,37 +174,37 @@ $old = [
                 <input type="hidden" name="onboard" value="1">
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label class="small font-weight-bold">Full name (as on ID) *</label>
-                        <input type="text" name="fullname" class="form-control form-control-sm" value="<?= $old['fullname']; ?>" required>
+                        <label class="small font-weight-bold" for="fullname">Full name (as on ID) *</label>
+                        <input type="text" name="fullname" id="fullname" class="form-control form-control-sm" value="<?= $old['fullname']; ?>" required>
                     </div>
                     <div class="form-group col-md-6">
-                        <label class="small font-weight-bold">Email (login ID) *</label>
-                        <input type="email" name="email" class="form-control form-control-sm" value="<?= $old['email']; ?>" required>
+                        <label class="small font-weight-bold" for="email">Email (login ID) *</label>
+                        <input type="email" name="email" id="email" class="form-control form-control-sm" value="<?= $old['email']; ?>" required>
                     </div>
                     <div class="form-group col-md-6">
-                        <label class="small font-weight-bold">Voter ID (EPIC) *</label>
-                        <input type="text" name="voter_id_number" class="form-control form-control-sm" value="<?= $old['epic']; ?>" required>
+                        <label class="small font-weight-bold" for="voter_id_number">Voter ID (EPIC) *</label>
+                        <input type="text" name="voter_id_number" id="voter_id_number" class="form-control form-control-sm" value="<?= $old['epic']; ?>" required>
                     </div>
                     <div class="form-group col-md-6">
-                        <label class="small font-weight-bold">Mobile (optional)</label>
-                        <input type="text" name="mobile" class="form-control form-control-sm" value="<?= $old['mobile']; ?>">
+                        <label class="small font-weight-bold" for="mobile">Mobile (optional)</label>
+                        <input type="text" name="mobile" id="mobile" class="form-control form-control-sm" value="<?= $old['mobile']; ?>">
                     </div>
                     <div class="form-group col-md-8">
-                        <label class="small font-weight-bold">Constituency</label>
-                        <input type="text" name="constituency" class="form-control form-control-sm"
+                        <label class="small font-weight-bold" for="constituency">Constituency</label>
+                        <input type="text" name="constituency" id="constituency" class="form-control form-control-sm"
                                placeholder="e.g. Varanasi (PC-77)" value="<?= $old['constituency']; ?>">
                         <small class="text-muted">Decides which ballot this citizen gets at a booth.</small>
                     </div>
                     <div class="form-group col-md-4">
-                        <label class="small font-weight-bold">Status</label>
-                        <select name="status" class="form-control form-control-sm">
+                        <label class="small font-weight-bold" for="status">Status</label>
+                        <select name="status" id="status" class="form-control form-control-sm">
                             <option value="approved" selected>Approved now</option>
                             <option value="pending">Keep pending</option>
                         </select>
                     </div>
                     <div class="form-group col-md-6">
-                        <label class="small font-weight-bold">Temporary password *</label>
-                        <input type="text" name="password" class="form-control form-control-sm" minlength="6" placeholder="min 6 characters" required>
+                        <label class="small font-weight-bold" for="password">Temporary password *</label>
+                        <input type="text" name="password" id="password" class="form-control form-control-sm" minlength="6" placeholder="min 6 characters" required>
                     </div>
                 </div>
 

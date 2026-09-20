@@ -45,6 +45,12 @@ Keep the demo tab frontmost and pre-approve camera access so the face-verify scr
 
 ## 🎬 The demo flow (~8 min)
 
+> **Language switching.** The kiosk screens carry a language strip above the
+> header — one tap toggles English ⇄ हिन्दी and the choice sticks in a cookie.
+> It is the quickest way to show the booth working for a citizen who does not
+> read English. The voter portal and admin console are still English-only.
+
+
 ### Act 1 — Voter journey (the core)
 
 1. Open `localhost:8000` → pick State + Lok Sabha constituency → note the portal is constituency-scoped

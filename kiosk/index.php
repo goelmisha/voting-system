@@ -12,6 +12,7 @@
  * ---------------------------------------------------------------
  */
 require_once __DIR__ . '/_kiosk.php';
+require_once __DIR__ . '/../includes/i18n.php';
 kiosk_require_unlocked();
 
 $booth = kiosk_booth();
@@ -163,25 +164,21 @@ function status_pill(string $status): string
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= current_lang() ?>"<?= i18n_is_rtl() ? ' dir="rtl"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Booth Kiosk — <?= htmlspecialchars($booth['name']); ?></title>
+    <title><?= te('kiosk.booth_kiosk_prefix') ?><?= htmlspecialchars($booth['name']); ?></title>
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     <style>
-        :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
         body { background-color: #f8f9fc; font-family: Arial, sans-serif; padding-bottom: 40px; }
         .header {
             background-color: var(--primary-color); color: #fff;
             display: flex; align-items: center; justify-content: space-between;
             padding: 12px 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             position: sticky; top: 0; z-index: 20;
-        }
-        .booth-chip {
-            background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
-            border-radius: 20px; padding: 4px 14px; font-size: .85rem; font-weight: bold;
         }
         .kiosk-card {
             background: #fff; border: 1px solid #e0e0e0; border-radius: 12px;
@@ -190,61 +187,55 @@ function status_pill(string $status): string
         .kiosk-card.enroll { border-top: 5px solid #1f7a3f; }
         .kiosk-card.verify { border-top: 5px solid #0d6efd; }
         .btn-custom { background-color: var(--primary-color); color: #fff; font-weight: bold; border: none; }
-        .btn-custom:hover { background-color: var(--primary-hover); color: #fff; }
-        .btn-custom:disabled { background-color: #c9b8dc; cursor: not-allowed; }
-        .voter-chip {
-            background: #f3e8ff; border: 1px solid #d1c4e9; border-radius: 20px;
-            padding: 6px 16px; font-weight: bold; color: var(--primary-color); display: inline-block;
-        }
         .scan-btn { font-size: 1.05rem; padding: 16px; }
         .result-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .big-icon { font-size: 42px; }
         .search-hit { border: 1px solid #e6e6ef; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
+<?php render_lang_switcher(); ?>
 
 <div class="header">
     <div>
-        <div class="font-weight-bold">🖐️ Booth Biometric Kiosk</div>
+        <div class="font-weight-bold"><?= te('kiosk.brand') ?></div>
         <span class="booth-chip">📍 <?= htmlspecialchars($booth['name']); ?> · <?= htmlspecialchars($booth['code']); ?></span>
     </div>
-    <a href="logout.php" class="btn btn-light btn-sm font-weight-bold">Lock</a>
+    <a href="logout.php" class="btn btn-light btn-sm font-weight-bold"><?= te('kiosk.lock') ?></a>
 </div>
 
 <div class="container" style="max-width: 760px;">
 
     <?php if ($receipt): ?>
         <div class="alert alert-success mt-3 mb-0 text-center">
-            🗳️ <strong><?= htmlspecialchars($receipt['name'] ?? 'Citizen'); ?></strong> — vote recorded
-            <span class="d-block small"><?= htmlspecialchars($receipt['constituency'] ?? ''); ?> · Hand the device to the next citizen.</span>
+            🗳️ <strong><?= htmlspecialchars($receipt['name'] ?? 'Citizen'); ?></strong> <?= te('kiosk.vote_recorded') ?><span class="d-block small"><?= htmlspecialchars($receipt['constituency'] ?? ''); ?> <?= te('kiosk.hand_next') ?></span>
         </div>
     <?php elseif ($ballot_auth !== null && $ballot_el !== null): ?>
         <!-- Fingerprint verified moments ago — offer the ballot (if eligible) -->
         <div class="kiosk-card verify">
             <div class="text-center mb-3">
                 <div class="big-icon">🔎</div>
-                <h5 class="font-weight-bold mb-1">Fingerprint verified</h5>
+                <h5 class="font-weight-bold mb-1"><?= te('kiosk.fp_verified') ?></h5>
                 <div class="voter-chip mb-2"><?= htmlspecialchars($verified_name); ?></div>
                 <div class="small text-muted">
-                    Constituency: <strong><?= htmlspecialchars($ballot_el['constituency'] !== '' ? $ballot_el['constituency'] : '—'); ?></strong>
+                    <?= te('kiosk.constituency') ?><strong><?= htmlspecialchars($ballot_el['constituency'] !== '' ? $ballot_el['constituency'] : '—'); ?></strong>
                     · valid for <?= (int)$ballot_auth['expires_in']; ?>s
                 </div>
             </div>
 
             <?php if ($ballot_el['ok']): ?>
                 <a href="ballot.php" class="btn btn-success w-100 scan-btn font-weight-bold">
-                    🗳️ Open Ballot for <?= htmlspecialchars($verified_name); ?>
+                    <?= te('kiosk.open_ballot') ?><?= htmlspecialchars($verified_name); ?>
                 </a>
                 <p class="text-center text-muted small mt-2 mb-0">
-                    Hand the device to the citizen, let them choose, then confirm.
-                </p>
+                    <?= te('kiosk.hand_device') ?></p>
             <?php else: ?>
                 <div class="alert alert-warning text-center small mb-2"><?= htmlspecialchars($ballot_el['reason']); ?></div>
-                <p class="text-center text-muted small mb-2">The citizen's identity was verified, but no ballot can be issued here.</p>
+                <p class="text-center text-muted small mb-2"><?= te('kiosk.no_ballot_here') ?></p>
             <?php endif; ?>
 
-            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2">Next citizen</a>
+            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2"><?= te('kiosk.next_citizen') ?></a>
         </div>
     <?php elseif ($need_face): ?>
         <!-- Fingerprint verified; the face check is still outstanding -->
@@ -253,7 +244,7 @@ function status_pill(string $status): string
                 <div class="big-icon">🖐️</div>
                 <h5 class="font-weight-bold mb-1">Fingerprint verified</h5>
                 <div class="voter-chip mb-2"><?= htmlspecialchars($face_pending_name); ?></div>
-                <div class="small text-muted">One more step — the face check is required before the ballot opens.</div>
+                <div class="small text-muted"><?= te('kiosk.face_required') ?></div>
             </div>
             <a href="face_verify.php" class="btn btn-primary w-100 scan-btn font-weight-bold">🙂 Start Face Check</a>
             <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2">Next citizen</a>
@@ -277,7 +268,7 @@ function status_pill(string $status): string
                     <?= htmlspecialchars($armed['fullname']); ?> · <?= htmlspecialchars($armed['email']); ?>
                 </div>
                 <div class="small text-muted">
-                    EPIC: <span class="badge badge-info"><?= htmlspecialchars($armed['voter_id_number'] ?? 'N/A'); ?></span>
+                    <?= te('kiosk.epic') ?><span class="badge badge-info"><?= htmlspecialchars($armed['voter_id_number'] ?? 'N/A'); ?></span>
                     <?= status_pill($armed['status']); ?>
                     · <?= (int)$armed['fp_count']; ?> fingerprint(s) on file
                 </div>
@@ -286,24 +277,20 @@ function status_pill(string $status): string
             <?php if (!$is_enroll && KIOSK_REQUIRE_FACE): ?>
                 <div class="alert <?= $armed_face_done ? 'alert-success' : 'alert-info'; ?> text-center small">
                     <?php if ($armed_face_done): ?>
-                        ✅ Face check passed. <strong>Step 2:</strong> scan the fingerprint to finish.
-                    <?php else: ?>
-                        <strong>Step 1:</strong> face check (blink twice).
-                        <strong>Step 2:</strong> fingerprint. Both are required.
-                    <?php endif; ?>
+                        <?= te('kiosk.face_passed') ?><strong><?= te('kiosk.step2_label') ?></strong> <?= te('kiosk.step2_scan') ?><?php else: ?>
+                        <strong><?= te('kiosk.step1_label') ?></strong> <?= te('kiosk.step1_face') ?><strong>Step 2:</strong> <?= te('kiosk.step2_fp') ?><?php endif; ?>
                 </div>
             <?php endif; ?>
 
             <?php if (!$is_enroll && (int)$armed['fp_count'] === 0): ?>
                 <div class="alert alert-warning text-center small">
-                    This citizen has no fingerprint enrolled yet — use <strong>Enroll</strong> first.
+                    <?= te('kiosk.no_fp_use') ?><strong><?= te('kiosk.enroll') ?></strong> first.
                 </div>
             <?php endif; ?>
 
             <?php if (!$is_enroll && KIOSK_REQUIRE_FACE && !$armed_face_done): ?>
                 <a href="face_verify.php" class="btn btn-primary w-100 scan-btn font-weight-bold mb-2">
-                    🙂 Step 1 — Start Face Check
-                </a>
+                    <?= te('kiosk.step1_start_face') ?></a>
             <?php endif; ?>
 
             <div id="scanStatus" class="alert alert-info py-2 text-center d-none"></div>
@@ -313,23 +300,23 @@ function status_pill(string $status): string
                 <span id="scanBtnLabel"><?= $is_enroll ? 'Start Scan' : ($armed_face_done ? 'Step 2 — Verify Fingerprint' : 'Verify Fingerprint'); ?></span>
             </button>
 
-            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2">Cancel — choose a different citizen</a>
+            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2"><?= te('kiosk.cancel_other') ?></a>
         </div>
     <?php else: ?>
         <!-- ---------------- Pick a citizen ---------------- -->
         <div class="kiosk-card">
-            <h5 class="font-weight-bold mb-2">Find the citizen</h5>
+            <h5 class="font-weight-bold mb-2"><?= te('kiosk.find_citizen') ?></h5>
             <p class="text-muted small mb-3">
                 Search by name, email, or EPIC number. Then choose <strong>Enroll</strong> (first time) or
-                <strong>Verify</strong> (identity check-in).
+                <strong><?= te('kiosk.verify') ?></strong> (identity check-in).
             </p>
             <form method="GET" action="index.php" class="form-row">
                 <div class="col-9 mb-2">
-                    <input type="text" name="q" class="form-control" placeholder="Name, email, or EPIC…"
+                    <input type="text" name="q" class="form-control" aria-label="<?= te('kiosk.search_aria') ?>" placeholder="<?= te('kiosk.search_ph') ?>"
                            value="<?= htmlspecialchars($q); ?>" autocomplete="off" autofocus>
                 </div>
                 <div class="col-3 mb-2">
-                    <button type="submit" class="btn btn-custom w-100">Search</button>
+                    <button type="submit" class="btn btn-custom w-100"><?= te('kiosk.search') ?></button>
                 </div>
             </form>
 
@@ -338,8 +325,7 @@ function status_pill(string $status): string
                 <?php if (empty($results)): ?>
                     <div class="alert alert-secondary text-center small mb-0">
                         No citizen matched “<?= htmlspecialchars($q); ?>”.
-                        <br>Walk-in citizens must be onboarded by election staff in the admin console first.
-                    </div>
+                        <br><?= te('kiosk.walkin_note') ?></div>
                 <?php else: ?>
                     <?php foreach ($results as $r): ?>
                         <div class="search-hit result-row">
@@ -357,7 +343,7 @@ function status_pill(string $status): string
                                    href="index.php?mode=enroll&vid=<?= (int)$r['id']; ?>&q=<?= urlencode($q); ?>">Enroll</a>
                                 <?php if ((int)$r['fp_count'] === 0): ?>
                                     <span class="btn btn-sm btn-primary btn-block disabled"
-                                          title="No fingerprint enrolled yet — use Enroll first">Verify</span>
+                                          title="<?= te('kiosk.no_fp_title') ?>">Verify</span>
                                 <?php else: ?>
                                     <a class="btn btn-sm btn-primary btn-block"
                                        href="index.php?mode=verify&vid=<?= (int)$r['id']; ?>&q=<?= urlencode($q); ?>">Verify</a>

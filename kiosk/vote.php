@@ -14,6 +14,7 @@
  * ---------------------------------------------------------------
  */
 require_once __DIR__ . '/_kiosk.php';
+require_once __DIR__ . '/../includes/i18n.php';
 kiosk_require_unlocked();
 
 $booth = kiosk_booth();
@@ -23,29 +24,30 @@ function kiosk_vote_error(string $message): void
 {
     ?>
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="<?= current_lang() ?>"<?= i18n_is_rtl() ? ' dir="rtl"' : '' ?>>
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="robots" content="noindex">
-        <title>Vote not recorded</title>
+        <title><?= te('kiosk.vote_not_recorded') ?></title>
         <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="../css/app.css">
         <style>
-            :root { --primary-color: blueviolet; --primary-hover: #701eb8; }
             body { background: #f8f9fc; font-family: Arial, sans-serif; }
             .card-x { background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:28px;
                       max-width:520px; margin:60px auto; box-shadow:0 6px 20px rgba(0,0,0,.06);
                       border-top:5px solid #dc3545; text-align:center; }
             .btn-custom { background-color: var(--primary-color); color:#fff; font-weight:bold; border:none; }
-            .btn-custom:hover { background-color: var(--primary-hover); color:#fff; }
         </style>
+        <link rel="stylesheet" href="../css/ui.css">
     </head>
     <body>
+<?php render_lang_switcher(); ?>
         <div class="card-x">
             <div style="font-size:42px;">⚠️</div>
             <h5 class="font-weight-bold mb-2">Vote not recorded</h5>
             <p class="text-muted small"><?= htmlspecialchars($message); ?></p>
-            <a href="index.php?mode=clear" class="btn btn-custom w-100">Back to search</a>
+            <a href="index.php?mode=clear" class="btn btn-custom w-100"><?= te('kiosk.back_to_search') ?></a>
         </div>
     </body>
     </html>

@@ -85,17 +85,9 @@ try {
     <title>Voter Dashboard - Online Voting System</title>
 
     <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/app.css">
     
     <style>
-        :root {
-            --primary-color: blueviolet;
-            --primary-hover: #701eb8;
-        }
-
-        body {
-            background-color: #f8f9fa;
-            font-family: Arial, sans-serif;
-        }
 
         .header {
             background-color: var(--primary-color); 
@@ -176,6 +168,7 @@ try {
             gap: 10px;
         }
     </style>
+    <link rel="stylesheet" href="../css/ui.css">
 </head>
 <body>
 
@@ -282,6 +275,7 @@ try {
                     </div>
                     
                     <div class="table-responsive">
+                        <div class="table-responsive">
                         <table class="table table-bordered text-center align-middle">
                             <thead class="thead-dark">
                                 <tr>
@@ -340,6 +334,7 @@ try {
                                 <?php endif; ?>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>

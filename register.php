@@ -214,12 +214,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voter Registration - Online Voting System</title>
     <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/app.css">
     <style>
-        :root {
-            --primary-color: blueviolet;
-            --primary-hover: #701eb8;
-            --bg-light: #f8f9fa;
-        }
         body {
             background-color: var(--bg-light);
             font-family: Arial, sans-serif;
@@ -254,10 +250,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
             border: none;
             width: 100%;
         }
-        .btn-custom:hover {
-            background-color: var(--primary-hover);
-            color: #ffffff;
-        }
         .otp-input {
             letter-spacing: 8px;
             font-size: 24px;
@@ -273,6 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp_btn'])) {
             background-color: #fff;
         }
     </style>
+    <link rel="stylesheet" href="css/ui.css">
 </head>
 <body>
 
