@@ -173,6 +173,9 @@ try {
             <a href="booths.php" class="btn btn-info btn-sm font-weight-bold mr-2" title="Manage polling-station kiosks and their booth codes">
                 📍 Booths &amp; Kiosks
             </a>
+            <a href="verify_pair.php" class="btn btn-info btn-sm font-weight-bold mr-2" title="Generate a one-time code to pair the booth phone">
+                📱 Pair Booth Phone
+            </a>
             <span class="mr-3 text-white">Welcome, <strong><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Admin'); ?></strong></span>
             <a href="logout.php" class="btn btn-light btn-sm font-weight-bold">Logout</a>
         </div>
@@ -204,7 +207,7 @@ try {
             <!-- Card 3: Registered Parties -->
             <div class="col-md-3 mb-3">
                 <div class="stat-card active-card" id="card-parties" style="border-left-color: #17a2b8;" onclick="showSection('parties-section', '')">
-                    <p>Registered Parties</p>
+                    <p>Registered Candidates</p>
                     <h3 style="color: #17a2b8;"><?= $total_parties; ?></h3>
                 </div>
             </div>

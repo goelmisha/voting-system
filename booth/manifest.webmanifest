@@ -1,0 +1,19 @@
+{
+    "name": "Booth Station — Voting System",
+    "short_name": "Booth",
+    "description": "Dedicated booth phone for voter fingerprint enrollment and voting",
+    "start_url": "index.php",
+    "scope": "./",
+    "display": "fullscreen",
+    "orientation": "portrait",
+    "background_color": "#f4f1fa",
+    "theme_color": "#4b0082",
+    "icons": [
+        {
+            "src": "icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}

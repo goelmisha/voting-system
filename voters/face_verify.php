@@ -210,12 +210,28 @@ if (!empty($imageName) && file_exists(__DIR__ . "/../images/" . $imageName)) {
 
     let stream = null;
     let referenceDescriptor = null;
-    let loopTimer = null;
+    let livenessToken = 0;             // invalidates the blink loop on stop
+    let openBaseline = 0;              // calibrated "eyes open" EAR for this person
 
-    const MIN_FACE_AREA = 160 * 160;   // face must be large enough in frame
-    const EYE_CLOSED = 0.19;           // EAR below this = eye closed
-    const EYE_OPEN   = 0.24;           // EAR above this = eye open
+    const MIN_FACE_AREA = 150 * 150;   // face must be large enough in frame
     const BLINKS_NEEDED = 2;
+
+    // ---- Adaptive blink detection -------------------------------------------------
+    // EAR varies widely between people (≈0.20 narrow … ≈0.38 wide), with glasses,
+    // lighting and camera angle, so FIXED cut-offs miss blinks (the old
+    // closed<0.19 / open>0.24 pair never registered "open" for narrow eyes).
+    // Instead: calibrate the person's own open-eye level, then use RELATIVE
+    // hysteresis thresholds + closed-phase duration gating (50–700 ms).
+    const CALIB_SAMPLES = 6;      // open-eye samples needed before counting starts
+    const DROP_ABS      = 0.042;  // closed: EAR < baseline − abs
+    const DROP_RATIO    = 0.75;   // closed: EAR < baseline × ratio
+    const OPEN_ABS      = 0.022;  // open:   EAR > baseline − abs
+    const OPEN_RATIO    = 0.87;   // open:   EAR > baseline × ratio
+    const FALLBACK_OPEN = 0.19;   // pre-calibration fallback ("eyes open" cut)
+    const BLINK_MIN_MS  = 50;     // shorter closure = sensor noise
+    const BLINK_MAX_MS  = 700;    // longer closure = looking down / rubbing
+    const RECAL_MS      = 9000;   // no blink progress for this long → recalibrate
+    const RECAL_LIMIT   = 2;      // max auto-recalibrations per attempt
 
     function setStatus(msg, kind) {
         statusAlert.className = 'alert alert-' + (kind || 'info') + ' py-2 d-inline-block px-4 mb-1';
@@ -223,17 +239,43 @@ if (!empty($imageName) && file_exists(__DIR__ . "/../images/" . $imageName)) {
     }
     function setStep(id, state) { steps[id].className = 'step-dot ' + (state || ''); }
 
-    // Eye aspect ratio from the 68 facial landmarks
+    // Eye aspect ratio from the 68 facial landmarks.
+    // Returns the better of the two eyes: with a tilted head one eye is
+    // foreshortened, and the clearly visible one tracks blinks far better.
     function ear(pts) {
         const d = (a, b) => Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y);
-        const left  = (d(37, 41) + d(38, 40)) / (2 * d(36, 39) + 1e-6);
-        const right = (d(43, 47) + d(44, 46)) / (2 * d(42, 45) + 1e-6);
-        return (left + right) / 2;
+        const span = (a, b) => Math.max(d(a, b), 1e-6);
+        const left  = (d(37, 41) + d(38, 40)) / (2 * span(36, 39));
+        const right = (d(43, 47) + d(44, 46)) / (2 * span(42, 45));
+        return Math.max(left, right);
+    }
+
+    function median(values) {
+        if (!values.length) return 0;
+        const s = [...values].sort((a, b) => a - b);
+        const mid = s.length >> 1;
+        return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+    }
+
+    // Hysteresis classifier against the person's calibrated baseline.
+    // 'hold' = dead zone: keep the previous state (rejects jitter).
+    function classifyEye(v) {
+        if (v < openBaseline - DROP_ABS && v < openBaseline * DROP_RATIO) return 'closed';
+        if (v > openBaseline - OPEN_ABS || v > openBaseline * OPEN_RATIO) return 'open';
+        return 'hold';
+    }
+
+    // Baseline-aware "eyes open" check (used when picking the capture frame).
+    function isEyeOpenV(v) {
+        if (openBaseline > 0) {
+            return v > openBaseline - OPEN_ABS || v > openBaseline * OPEN_RATIO;
+        }
+        return v > FALLBACK_OPEN;
     }
 
     async function stopCamera() {
         if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-        if (loopTimer) { clearInterval(loopTimer); loopTimer = null; }
+        livenessToken++;   // invalidate any running blink-detection loop
         videoWrap.classList.add('d-none');
     }
 
@@ -265,50 +307,118 @@ if (!empty($imageName) && file_exists(__DIR__ . "/../images/" . $imageName)) {
         }
     }
 
-    // ---------- 2. live liveness loop (blink detection) ----------
+    // ---------- 2. live liveness loop (adaptive blink detection) ----------
     function startLivenessLoop() {
+        const token = ++livenessToken;
+        let eyeState = 'unknown';        // 'open' | 'closed' | 'unknown'
+        let calib = [];
+        let closedAt = 0;
         let blinkCount = 0;
-        let prevState = 'unknown'; // 'closed' | 'open'
-        let busy = false;
+        let lastBlinkAt = 0;
+        let lastFaceAt = 0;
+        let watchingSince = 0;
+        let recalibrations = 0;
+        let flashUntil = 0;
+        let tipsUntil = 0;
+        let done = false;
+        const watchStart = performance.now();
 
-        livenessTag.innerText = 'Look at the camera and blink ' + BLINKS_NEEDED + ' times…';
+        openBaseline = 0;                // fresh calibration for every attempt
+        livenessTag.innerText = 'Calibrating — open your eyes and look straight at the camera…';
         setStep('s2', 'active');
 
-        loopTimer = setInterval(async () => {
-            if (busy || !referenceDescriptor) return;
-            busy = true;
+        async function tick() {
+            if (done || !referenceDescriptor || token !== livenessToken) return;
+            const t0 = performance.now();
             try {
-                const det = await faceapi.detectSingleFace(video).withFaceLandmarks();
+                // Smaller inference size ⇒ much faster loop ⇒ blinks can't slip between samples.
+                const det = await faceapi
+                    .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ inputSize: 288, scoreThreshold: 0.35 }))
+                    .withFaceLandmarks();
+                if (done || token !== livenessToken) return;
+                const now = performance.now();
+
                 if (!det) {
-                    livenessTag.innerText = 'No face detected — center yourself in the frame';
-                    return;
-                }
-                const area = det.detection.box.width * det.detection.box.height;
-                if (area < MIN_FACE_AREA) {
-                    livenessTag.innerText = 'Move closer to the camera';
-                    return;
-                }
-
-                const v = ear(det.landmarks.positions);
-                const now = v < EYE_CLOSED ? 'closed' : (v > EYE_OPEN ? 'open' : prevState);
-
-                if (prevState === 'closed' && now === 'open') blinkCount++;   // a blink completed
-                prevState = now;
-
-                if (blinkCount >= BLINKS_NEEDED) {
-                    clearInterval(loopTimer);
-                    loopTimer = null;
-                    livenessTag.innerText = '✓ Liveness confirmed — capturing…';
-                    await captureAndVerify();
+                    if (now - (lastFaceAt || watchStart) > 1200) {
+                        livenessTag.innerText = 'No face detected — center yourself in the frame';
+                    }
+                } else if (det.detection.box.width * det.detection.box.height < MIN_FACE_AREA) {
+                    livenessTag.innerText = 'Move a little closer to the camera';
                 } else {
-                    livenessTag.innerText = 'Blink again (' + (BLINKS_NEEDED - blinkCount) + ' more)';
+                    lastFaceAt = now;
+                    const v = ear(det.landmarks.positions);
+
+                    if (openBaseline <= 0) {
+                        // --- calibrate this person's open-eye level ---
+                        calib.push(v);
+                        const m = median(calib);
+                        if (calib.length >= CALIB_SAMPLES && m > 0.13) {
+                            openBaseline = m;
+                            watchingSince = now;
+                        } else if (calib.length >= 30) {
+                            openBaseline = median(calib.slice(-12)) || v; // unusual eyes: use what we have
+                            watchingSince = now;
+                        }
+                        if (openBaseline <= 0) {
+                            livenessTag.innerText = 'Calibrating — open your eyes, face the camera…';
+                        }
+                    } else {
+                        // --- blink state machine: hysteresis + duration gate ---
+                        let st = classifyEye(v);
+                        if (st === 'hold') st = eyeState;
+                        if (st !== eyeState) {
+                            if (st === 'closed') {
+                                closedAt = now;
+                            } else if (st === 'open' && eyeState === 'closed') {
+                                const dur = now - closedAt;
+                                if (dur >= BLINK_MIN_MS && dur <= BLINK_MAX_MS && blinkCount < BLINKS_NEEDED) {
+                                    blinkCount++;
+                                    lastBlinkAt = now;
+                                    flashUntil = now + 900;
+                                }
+                            }
+                            eyeState = st;
+                        }
+
+                        // baseline gently follows the true open-eye level (drift/lighting)
+                        if (v > openBaseline - 0.015) openBaseline = openBaseline * 0.97 + v * 0.03;
+
+                        // stuck? auto-recalibrate (bad calibration, glasses glare, lighting shift)
+                        const progressAgo = now - (lastBlinkAt || watchingSince);
+                        if (blinkCount < BLINKS_NEEDED && progressAgo > RECAL_MS) {
+                            if (recalibrations < RECAL_LIMIT) {
+                                recalibrations++;
+                                openBaseline = 0; calib = []; eyeState = 'unknown';
+                                livenessTag.innerText = 'Re-calibrating — look straight at the camera…';
+                            } else if (now > tipsUntil) {
+                                tipsUntil = now + 4000;
+                                livenessTag.innerText = 'Trouble detecting blinks — try better lighting, remove glasses, or move closer';
+                            }
+                        }
+
+                        if (blinkCount >= BLINKS_NEEDED) {
+                            done = true;
+                            livenessTag.innerText = '✓ Liveness confirmed — capturing…';
+                            captureAndVerify();
+                            return;
+                        }
+
+                        if (now > tipsUntil) {
+                            const dots = '●'.repeat(blinkCount) + '○'.repeat(BLINKS_NEEDED - blinkCount);
+                            livenessTag.innerText = (now < flashUntil)
+                                ? '👍 Blink ' + blinkCount + ' registered! ' + dots
+                                : 'Blink naturally — ' + (BLINKS_NEEDED - blinkCount) + ' more  ' + dots;
+                        }
+                    }
                 }
             } catch (e) {
                 // transient detection errors are ignored
-            } finally {
-                busy = false;
             }
-        }, 120);
+            const dt = performance.now() - t0;
+            setTimeout(tick, Math.max(15, 70 - dt)); // self-paced: ~70ms sampling, faster when inference allows
+        }
+
+        tick();
     }
 
     // ---------- 3. capture a clean single-face frame + verify on server ----------
@@ -332,7 +442,7 @@ if (!empty($imageName) && file_exists(__DIR__ . "/../images/" . $imageName)) {
                 } else {
                     const r = results[0];
                     const area = r.detection.box.width * r.detection.box.height;
-                    if (area < MIN_FACE_AREA || ear(r.landmarks.positions) < EYE_CLOSED) {
+                    if (area < MIN_FACE_AREA || !isEyeOpenV(ear(r.landmarks.positions))) {
                         livenessTag.innerText = 'Keep eyes open and face centered…';
                     } else {
                         chosen = r;

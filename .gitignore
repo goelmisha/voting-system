@@ -42,3 +42,7 @@ Thumbs.db
 # --- Build / test output ---
 /coverage/
 *.log
+
+voting_system.db
+voting_system.db*
+*.db
