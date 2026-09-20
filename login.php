@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/includes/app_config.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -36,15 +37,18 @@ function send_login_email_otp($to_email, $to_name, $otp) {
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = app_config('SMTP_HOST', 'smtp.gmail.com');
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'jahnvikarnatac04@gmail.com';
-        // Paste your 16-character Google App Password here (no spaces)
-        $mail->Password   = 'zwtczjgjkqnulyrc';  
+        $mail->Username   = app_config('SMTP_USERNAME');
+        // 16-character Google App Password — supplied from includes/config.php
+        $mail->Password   = app_config('SMTP_PASSWORD');  
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $mail->Port       = (int) app_config('SMTP_PORT', 587);
 
-        $mail->setFrom('jahnvikarnatac04@gmail.com', 'Online Voting System');
+        $mail->setFrom(
+            app_config('SMTP_FROM', app_config('SMTP_USERNAME')),
+            app_config('SMTP_FROM_NAME', 'Online Voting System')
+        );
         $mail->addAddress($to_email, $to_name);
 
         $mail->isHTML(true);
@@ -71,7 +75,7 @@ function send_login_email_otp($to_email, $to_name, $otp) {
  * Helper: Dispatch Live Mobile OTP via Fast2SMS
  */
 function send_login_sms_otp($mobile_number, $otp) {
-    $apiKey = "YOUR_FAST2SMS_API_KEY"; // Enter your Fast2SMS API Key
+    $apiKey = (string) app_config('FAST2SMS_API_KEY', '');
 
     $clean_mobile = preg_replace('/[^0-9]/', '', $mobile_number);
     if (strlen($clean_mobile) === 12 && substr($clean_mobile, 0, 2) === '91') {

@@ -10,6 +10,7 @@ exit();
 session_start();
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/includes/app_config.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -34,14 +35,17 @@ function send_live_email($to_email, $to_name, $otp) {
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = app_config('SMTP_HOST', 'smtp.gmail.com');
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'jahnvikarnatac04@gmail.com';
-        $mail->Password   = 'zwtc zjgj kqnu lyrc';  // 16-digit Google App Password
+        $mail->Username   = app_config('SMTP_USERNAME');
+        $mail->Password   = app_config('SMTP_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $mail->Port       = (int) app_config('SMTP_PORT', 587);
 
-        $mail->setFrom('jahnvikarnatac04@gmail.com', 'Online Voting System');
+        $mail->setFrom(
+            app_config('SMTP_FROM', app_config('SMTP_USERNAME')),
+            app_config('SMTP_FROM_NAME', 'Online Voting System')
+        );
         $mail->addAddress($to_email, $to_name);
 
         $mail->isHTML(true);
