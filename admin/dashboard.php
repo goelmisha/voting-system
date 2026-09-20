@@ -180,8 +180,11 @@ try {
     <div class="container-fluid header">
         <h4 class="m-0 font-weight-bold">Online Voting System — Admin Panel</h4>
         <div>
-            <a href="enroll_voter.php" class="btn btn-warning btn-sm font-weight-bold mr-2" title="Admin-only: pre-enroll a voter's fingerprint at the booth">
-                🖐️ Register Biometrics / Enroll Voter
+            <a href="onboard_voter.php" class="btn btn-warning btn-sm font-weight-bold mr-2" title="Admin-only: register a walk-in citizen; their fingerprint is enrolled at a booth kiosk">
+                ➕ Onboard Citizen
+            </a>
+            <a href="booths.php" class="btn btn-info btn-sm font-weight-bold mr-2" title="Manage polling-station kiosks and their booth codes">
+                📍 Booths &amp; Kiosks
             </a>
             <span class="mr-3 text-white">Welcome, <strong><?= htmlspecialchars($_SESSION['admin_name'] ?? 'Admin'); ?></strong></span>
             <a href="logout.php" class="btn btn-light btn-sm font-weight-bold">Logout</a>
@@ -515,17 +518,9 @@ try {
                         </td>
                         <td class="align-middle">
                             <?php if (isset($enrolled_map[(int)$voter['id']])): ?>
-                                <a href="enroll_voter.php?vid=<?= (int)$voter['id']; ?>"
-                                   class="badge badge-success px-2 py-1"
-                                   style="text-decoration: none;"
-                                   title="Manage this voter's biometrics at the booth">
-                                    ✔ Enrolled</a>
+                                <span class="badge badge-success px-2 py-1" title="Fingerprint enrolled">✔ Enrolled</span>
                             <?php else: ?>
-                                <a href="enroll_voter.php?vid=<?= (int)$voter['id']; ?>"
-                                   class="badge badge-primary px-2 py-1"
-                                   style="text-decoration: none;"
-                                   title="Pre-enroll this voter's biometrics at the booth">
-                                    + Enroll</a>
+                                <span class="badge badge-secondary px-2 py-1" title="Fingerprint is enrolled at a booth kiosk">Not enrolled</span>
                             <?php endif; ?>
                         </td>
                     </tr>

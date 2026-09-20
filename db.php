@@ -48,4 +48,73 @@ try {
 } catch (PDOException $e) {
     // Non-fatal if audit table cannot be created.
 }
+
+/* ===============================================================
+ * Booth / kiosk location model (idempotent upgrade path)
+ * ===============================================================
+ * A booth is a physical location (polling station) that runs the
+ * phone-kiosk enrollment/verification terminal. Each booth has a
+ * short code + a PIN used to unlock the kiosk on the device.
+ */
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS booths (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            state TEXT DEFAULT '',
+            constituency TEXT DEFAULT '',
+            pin_hash TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+} catch (PDOException $e) {
+    // Non-fatal: booth features degrade if this cannot be created.
+}
+
+// Failed/successful kiosk unlock attempts, used for rate-limiting.
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS kiosk_auth_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booth_code TEXT DEFAULT '',
+            ip_address TEXT DEFAULT '',
+            success INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_kiosk_attempts_ip ON kiosk_auth_attempts(ip_address, created_at)");
+} catch (PDOException $e) {
+    // Non-fatal.
+}
+
+/**
+ * Add a column only when it does not already exist (SQLite has no
+ * ADD COLUMN IF NOT EXISTS). Safe to call on every request.
+ */
+if (!function_exists('vs_add_column')) {
+    function vs_add_column(PDO $pdo, string $table, string $column, string $ddl): void
+    {
+        try {
+            $cols = $pdo->query("PRAGMA table_info(" . $table . ")")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($cols as $c) {
+                if (strcasecmp((string)$c['name'], $column) === 0) {
+                    return;
+                }
+            }
+            $pdo->exec("ALTER TABLE " . $table . " ADD COLUMN " . $ddl);
+        } catch (PDOException $e) {
+            // Non-fatal.
+        }
+    }
+}
+
+// Where a passkey was enrolled, and where a biometric event happened.
+vs_add_column($pdo, 'passkeys', 'booth_id', 'booth_id INTEGER DEFAULT NULL');
+vs_add_column($pdo, 'biometric_logs', 'booth_id', 'booth_id INTEGER DEFAULT NULL');
+
+// A voter's Parliamentary Constituency — determines which ballot they get at
+// a booth kiosk. Matched against booths.constituency before a ballot is shown.
+vs_add_column($pdo, 'voters', 'constituency', "constituency TEXT DEFAULT ''");
 ?>
