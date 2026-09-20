@@ -1,6 +1,12 @@
 <?php
 // db.php - Central Database Connection
-$dbPath = __DIR__ . '/voting_system.db';
+// Database location. Overridable so automated tests can run against an
+// isolated database instead of the live one (see scripts/tests/).
+// Default behaviour is unchanged when VOTING_DB_PATH is not set.
+$dbPath = getenv('VOTING_DB_PATH');
+if ($dbPath === false || $dbPath === '') {
+    $dbPath = __DIR__ . '/voting_system.db';
+}
 
 try {
     // Connect using PDO (standard & secure for SQLite in PHP)

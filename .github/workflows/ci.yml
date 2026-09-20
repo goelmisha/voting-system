@@ -78,5 +78,10 @@ jobs:
             composer install --prefer-dist --no-progress --no-interaction
             composer test
           else
-            echo "No test harness yet (see docs/process/04-process-improvement.md IMP-04)."
+            echo "No unit-test harness yet (see docs/process/04-process-improvement.md IMP-04)."
           fi
+
+      # End-to-end: two booths, constituency rules, one-vote enforcement and
+      # the server-side face-match decision. Runs against an isolated database.
+      - name: End-to-end test — booth rules + face biometrics
+        run: php scripts/tests/e2e_booth_voting.php
