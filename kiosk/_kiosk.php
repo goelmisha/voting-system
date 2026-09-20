@@ -17,6 +17,9 @@ if (!defined('KIOSK_IDLE_SECONDS'))    define('KIOSK_IDLE_SECONDS', 300);   // a
 if (!defined('KIOSK_MAX_ATTEMPTS'))    define('KIOSK_MAX_ATTEMPTS', 5);     // unlock failures allowed...
 if (!defined('KIOSK_ATTEMPT_WINDOW'))  define('KIOSK_ATTEMPT_WINDOW', 900); // ...within 15 minutes per IP
 if (!defined('KIOSK_BALLOT_WINDOW'))   define('KIOSK_BALLOT_WINDOW', 120);  // vote within 2 min of fingerprint verify
+if (!defined('KIOSK_REQUIRE_FACE'))    define('KIOSK_REQUIRE_FACE', true);   // booth demands a face check AND a fingerprint
+if (!defined('KIOSK_FACE_WINDOW'))     define('KIOSK_FACE_WINDOW', 300);    // face check stays valid 5 min (fingerprint is the final gate)
+if (!defined('KIOSK_FACE_THRESHOLD'))  define('KIOSK_FACE_THRESHOLD', 0.55); // Euclidean distance on 128-d face descriptors
 
 /** Session keys that belong to a kiosk unlock. */
 function kiosk_session_keys()
@@ -27,6 +30,8 @@ function kiosk_session_keys()
         'kiosk_enroll_vid', 'kiosk_enroll_name',
         'kiosk_verify_vid', 'kiosk_verify_name',
         'booth_verified_vid', 'booth_verified_name', 'booth_verified_at',
+        'booth_face_vid', 'booth_face_name', 'booth_face_at',
+        'kiosk_face_nonce', 'kiosk_face_nonce_expiry',
     ];
 }
 
@@ -117,38 +122,133 @@ function kiosk_log_attempt(PDO $pdo, $booth_code, $success)
 /* ---------------- ballot authorization ---------------- */
 
 /**
- * The voter who just passed fingerprint verification at this booth, if that
- * verification is still inside the short ballot window. Returns
- * ['voter_id','verified_at','expires_in'] or null.
- *
- * This is the ONLY thing that authorizes a kiosk-ballot; it is set by
- * verify_finish and cleared the moment a vote is cast or the window lapses.
+ * Read a verification marker from the session and confirm it is still inside
+ * its validity window. Returns ['voter_id','verified_at','expires_in'] or null.
  */
-function kiosk_verified_voter()
+function kiosk_window_marker(string $vid_key, string $at_key, int $window): ?array
 {
-    $vid = !empty($_SESSION['booth_verified_vid']) ? (int)$_SESSION['booth_verified_vid'] : 0;
-    $at  = !empty($_SESSION['booth_verified_at']) ? (int)$_SESSION['booth_verified_at'] : 0;
+    $vid = !empty($_SESSION[$vid_key]) ? (int)$_SESSION[$vid_key] : 0;
+    $at  = !empty($_SESSION[$at_key]) ? (int)$_SESSION[$at_key] : 0;
     if ($vid <= 0 || $at <= 0) {
         return null;
     }
     $age = time() - $at;
-    if ($age < 0 || $age > KIOSK_BALLOT_WINDOW) {
+    if ($age < 0 || $age > $window) {
         return null;
     }
     return [
         'voter_id'   => $vid,
         'verified_at'=> $at,
-        'expires_in' => KIOSK_BALLOT_WINDOW - $age,
+        'expires_in' => $window - $age,
     ];
 }
 
-/** Drop any pending ballot authorization. */
+/**
+ * The voter who just passed FINGERPRINT (passkey) verification here, if still
+ * inside the ballot window. Set by webauthn_options.php `verify_finish`.
+ */
+function kiosk_fingerprint_verified_voter(): ?array
+{
+    return kiosk_window_marker('booth_verified_vid', 'booth_verified_at', KIOSK_BALLOT_WINDOW);
+}
+
+/**
+ * The voter who just passed the FACE check here, if still inside the face
+ * window. Set by kiosk/face_api.php on a genuine server-side match.
+ */
+function kiosk_face_verified_voter(): ?array
+{
+    return kiosk_window_marker('booth_face_vid', 'booth_face_at', KIOSK_FACE_WINDOW);
+}
+
+/**
+ * The voter authorized to cast a ballot at this booth.
+ *
+ * A ballot needs a live FINGERPRINT verification and — while KIOSK_REQUIRE_FACE
+ * is on (the default) — a live FACE check, both for the SAME citizen and both
+ * inside their windows. Returns ['voter_id','verified_at','expires_in'] or null.
+ *
+ * This is the ONLY thing that authorizes a kiosk ballot; the fingerprint marker
+ * is set by `verify_finish`, the face marker by `kiosk/face_api.php`, and both
+ * are cleared the moment a vote is cast or the window lapses.
+ */
+function kiosk_verified_voter(): ?array
+{
+    $fp = kiosk_fingerprint_verified_voter();
+    if ($fp === null) {
+        return null;
+    }
+    if (!KIOSK_REQUIRE_FACE) {
+        return $fp;
+    }
+    $face = kiosk_face_verified_voter();
+    if ($face === null || $face['voter_id'] !== $fp['voter_id']) {
+        return null;
+    }
+    return [
+        'voter_id'    => $fp['voter_id'],
+        'verified_at' => max($fp['verified_at'], $face['verified_at']),
+        'expires_in'  => min($fp['expires_in'], $face['expires_in']),
+    ];
+}
+
+/**
+ * The citizen a booth face check may run against right now: the armed verify
+ * target, or a fingerprint-verified citizen still in the ballot window.
+ * Returns the voter id, or 0 when nobody is armed.
+ */
+function kiosk_face_target_voter_id(): int
+{
+    if (!empty($_SESSION['kiosk_verify_vid'])) {
+        return (int)$_SESSION['kiosk_verify_vid'];
+    }
+    $fp = kiosk_fingerprint_verified_voter();
+    if ($fp !== null) {
+        return (int)$fp['voter_id'];
+    }
+    if (!empty($_SESSION['booth_face_vid'])) {
+        return (int)$_SESSION['booth_face_vid'];
+    }
+    return 0;
+}
+
+/**
+ * The face reference photo for a voter: the in-person booth capture when it
+ * exists, otherwise the registration photo. Returns a path relative to the
+ * kiosk/ directory (for an <img> or fetch), or '' when none is usable.
+ */
+function kiosk_face_reference_photo(PDO $pdo, int $voter_id): string
+{
+    $stmt = $pdo->prepare("SELECT photo, face_photo FROM voters WHERE id = ? LIMIT 1");
+    $stmt->execute([$voter_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return '';
+    }
+    foreach ([$row['face_photo'] ?? '', $row['photo'] ?? ''] as $name) {
+        $name = trim((string)$name);
+        if ($name === '' || $name === 'default.png') {
+            continue;
+        }
+        if (is_file(__DIR__ . '/../images/' . $name)) {
+            return '../images/' . $name;
+        }
+    }
+    return '';
+}
+
+/** Drop any pending ballot authorization (both biometric checks). */
 function kiosk_clear_ballot_auth()
 {
     unset(
         $_SESSION['booth_verified_vid'],
         $_SESSION['booth_verified_name'],
-        $_SESSION['booth_verified_at']
+        $_SESSION['booth_verified_at'],
+        $_SESSION['booth_face_vid'],
+        $_SESSION['booth_face_name'],
+        $_SESSION['booth_face_at'],
+        $_SESSION['kiosk_face_nonce'],
+        $_SESSION['kiosk_face_nonce_expiry']
     );
 }
 

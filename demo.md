@@ -52,22 +52,34 @@ Keep the demo tab frontmost and pre-approve camera access so the face-verify scr
 3. Show the **2FA screen** → fetch the OTP from the inbox → enter it → logged in
 4. **Pre-vote workflow**: the 3-step declaration gate before the dashboard unlocks
 5. **Identity verification**: webcam opens, live capture vs registered photo — the wow moment. Deliberately point the camera away once → "did not match" → then match. This verifies identity; it no longer unlocks a self-service ballot.
+
+   > This is the portal's copy of the face check. The **booth kiosk has its own face check too** (Act 2), where it is one of **two required steps** before a ballot opens. The portal copy is only an account identity check and unlocks nothing by itself.
+
 6. Note the candidate list is **view-only** — the ballot is cast at the booth kiosk (Act 2).
 
 ### Act 2 — Admin console
 
 1. Scroll to the discreet officer section → `admin/login.php` → `superadmin` / `SuperSecret123!` (also works: `admin` / `admin123`)
-2. Approve a `pending` voter → show that voter can now log in3. 🖐️ **Booth kiosk enrollment** — the security talking point:
+2. Approve a `pending` voter → show that voter can now log in
+3. 🖐️ **Booth kiosk enrollment** — the security talking point:
 
    > "Voters can't self-register online for security reasons — the election admin pre-enrolls them at the booth kiosk."
 
    Admin-side, onboard any walk-in not yet in the list with **➕ Onboard Citizen** in the dashboard header: name / email / EPIC / constituency / temp password → the record is created (default **Approved now**, since the ID was verified in person). Hand them a login slip.
 
+   > This is the only way a citizen gets into the database — self-registration is disabled. The **constituency** you type here must match the target booth's constituency **exactly** (e.g. `Varanasi (PC-77)`), and candidates must already exist for that string, or the booth refuses/opens an empty ballot. To fix an existing citizen who has no constituency:
+   > ```bash
+   > php scripts/assign_constituency.php list
+   > php scripts/assign_constituency.php assign "Varanasi (PC-77)" --blank
+   > ```
+
    Then on the booth phone open `kiosk/login.php` → unlock with the booth code + PIN → search the citizen → **Enroll** → they scan → the passkey is bound to *their* account and the booth auto-disarms.
 
    Duplicate email/EPIC entries are rejected with a pointer to the existing record.
 
-4. 🗳️ **Cast a ballot at the kiosk** — the kiosk offers **Open Ballot** for that citizen (only if their constituency matches the booth's). They choose a candidate on the device and confirm. Trying to vote again is refused.
+4. 🗳️ **Cast a ballot at the kiosk — two biometric steps** — search the citizen → **Verify** → **Step 1: Start Face Check** (they blink twice; the match is decided server-side) → back at the kiosk, **Step 2: Verify Fingerprint** → the kiosk then offers **Open Ballot** (only if their constituency matches the booth's). They choose a candidate and confirm. Trying to vote again is refused.
+
+   > A kiosk ballot needs **both** the face check and the fingerprint. If a citizen still has the placeholder photo, the face page offers **Capture Reference Photo** — do that once, in person, and the check proceeds.
 
 5. Show **live results / turnout** for the constituency
 
@@ -105,6 +117,6 @@ Then in the browser:
 3. Upload a selfie in **Edit Profile** (one-time, enables face match)
 4. Complete the declaration → **face scan** (identity verification)
 5. `superadmin` / `SuperSecret123!` at `admin/login.php` → check the results page
-6. (Optional) `kiosk/login.php` → unlock with `BOOTH-001` / `123456` → search the citizen → **Enroll** → **Verify** → **Open Ballot** → cast a vote (the booth and the citizen must share a constituency)
+6. (Optional) `kiosk/login.php` → unlock with `BOOTH-001` / `123456` → search the citizen → **Enroll** → **Verify** (face check → fingerprint) → **Open Ballot** → cast a vote (the booth and the citizen must share a constituency)
 
 If all steps pass, the app is demo-ready.

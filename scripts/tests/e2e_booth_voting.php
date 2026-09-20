@@ -16,6 +16,8 @@
  *   9. CSRF protects the vote endpoint.
  *  10. The face-match decision is computed and thresholded SERVER-side,
  *      the nonce is single-use, and every attempt is audited.
+ *  11. A booth can capture a citizen's reference face photo in person, which
+ *      is recorded, audited against the booth, and then used for checks.
  *
  * It runs against an ISOLATED database (VOTING_DB_PATH) and a throwaway
  * PHP built-in server. Your real voting_system.db is never touched.
@@ -185,9 +187,31 @@ function kiosk_session(string $dir, int $boothId, string $boothCode, string $boo
         'kiosk_started'       => time(),
         'kiosk_last_seen'     => time(),
         'kiosk_csrf'          => $csrf,
+        // A fully verified citizen: BOTH the fingerprint and the face check.
         'booth_verified_vid'  => $verifiedVoterId,
         'booth_verified_name' => 'E2E Voter',
         'booth_verified_at'   => $verifiedAt ?? time(),
+        'booth_face_vid'      => $verifiedVoterId,
+        'booth_face_name'     => 'E2E Voter',
+        'booth_face_at'       => $verifiedAt ?? time(),
+    ]);
+    return $id;
+}
+
+/** A session with ONLY the fingerprint check — the face check is missing. */
+function kiosk_session_fp_only(string $dir, int $boothId, string $boothCode, string $boothName, int $voterId, string $csrf): string
+{
+    $id = 'e2e' . bin2hex(random_bytes(8));
+    write_session($dir, $id, [
+        'kiosk_booth_id'      => $boothId,
+        'kiosk_booth_code'    => $boothCode,
+        'kiosk_booth_name'    => $boothName,
+        'kiosk_started'       => time(),
+        'kiosk_last_seen'     => time(),
+        'kiosk_csrf'          => $csrf,
+        'booth_verified_vid'  => $voterId,
+        'booth_verified_name' => 'E2E Voter',
+        'booth_verified_at'   => time(),
     ]);
     return $id;
 }
@@ -443,6 +467,12 @@ $r = http("$BASE/kiosk/vote.php", '_csrf=csrfV7&candidate_id=' . $candB1, "PHPSE
 check('candidate from another constituency is REJECTED', $r['status'] === 200 && stripos($r['body'], 'not on this citizen') !== false);
 check('rejected ballot changed nothing', vote_count($pdo, $candB1) === $countBeforeBad && !has_voted($pdo, $voterIds['V7']));
 
+// The booth demands BOTH biometrics: a fingerprint alone must not open a ballot.
+$fpOnly = kiosk_session_fp_only($SESS, $boothIds['A'], 'BOOTH-A', 'Booth A', $voterIds['V7'], 'csrfV7fp');
+$r = http("$BASE/kiosk/vote.php", '_csrf=csrfV7fp&candidate_id=' . $candA1, "PHPSESSID=$fpOnly");
+check('fingerprint alone cannot vote (face check also required)', strpos(location_of($r), 'expired=1') !== false, 'status ' . $r['status'] . ' loc ' . location_of($r));
+check('fingerprint-only attempt recorded no vote', !has_voted($pdo, $voterIds['V7']));
+
 /* ================================================================== */
 /* 6. The same citizen across two booths                               */
 /* ================================================================== */
@@ -529,6 +559,164 @@ check('malformed descriptor is rejected', ($bad['code'] ?? '') === 'DESCRIPTOR',
 
 $logged = (int)$pdo->query("SELECT COUNT(*) FROM biometric_logs WHERE method = 'face'")->fetchColumn();
 check('every face attempt is audited', $logged >= 2, "biometric_logs rows: $logged");
+
+/* ================================================================== */
+/* 10. Kiosk face check (server-side decision, booth-scoped)           */
+/* ================================================================== */
+section('10. Kiosk face check is server-side and booth-scoped');
+
+$kfid = 'kface' . bin2hex(random_bytes(8));
+write_session($SESS, $kfid, [
+    'kiosk_booth_id'    => $boothIds['A'],
+    'kiosk_booth_code'  => 'BOOTH-A',
+    'kiosk_booth_name'  => 'Booth A',
+    'kiosk_started'     => time(),
+    'kiosk_last_seen'   => time(),
+    'kiosk_csrf'        => 'kx',
+    'kiosk_verify_vid'  => $voterIds['V9'],
+    'kiosk_verify_name' => 'E2E Voter',
+]);
+$kcookie = "PHPSESSID=$kfid";
+$kjson = function (array $payload) use ($BASE, $kcookie) {
+    return http("$BASE/kiosk/face_api.php", json_encode($payload), $kcookie, ['Content-Type: application/json']);
+};
+
+$kbeginResp = $kjson(['action' => 'begin']);
+$kbegin = json_decode($kbeginResp['body'], true);
+check('kiosk face begin issues a nonce', is_array($kbegin) && !empty($kbegin['nonce']), 'status ' . $kbeginResp['status']);
+check('kiosk face begin reports the armed citizen', (int)($kbegin['voter_id'] ?? 0) === $voterIds['V9'], 'voter ' . ($kbegin['voter_id'] ?? '?'));
+
+$kmatch = json_decode($kjson([
+    'action' => 'match', 'nonce' => $kbegin['nonce'],
+    'live_descriptor' => $zeros, 'ref_descriptor' => $zeros,
+])['body'], true);
+check('kiosk face identical descriptors MATCH', !empty($kmatch['matched']) && (float)$kmatch['distance'] === 0.0, 'distance ' . ($kmatch['distance'] ?? '?'));
+check('kiosk face did not yet authorize a ballot (fingerprint missing)', empty($kmatch['ballot_ready']));
+
+$klogged = (int)$pdo->query(
+    "SELECT COUNT(*) FROM biometric_logs WHERE method = 'face' AND booth_id = " . (int)$boothIds['A']
+)->fetchColumn();
+check('kiosk face attempt is audited against the booth', $klogged >= 1, "rows: $klogged");
+
+/* ================================================================== */
+/* 11. Kiosk face UI wiring                                            */
+/* ================================================================== */
+section('11. Kiosk UI guides the two-step verification');
+
+$armId = 'arm' . bin2hex(random_bytes(8));
+write_session($SESS, $armId, [
+    'kiosk_booth_id'    => $boothIds['A'],
+    'kiosk_booth_code'  => 'BOOTH-A',
+    'kiosk_booth_name'  => 'Booth A',
+    'kiosk_started'     => time(),
+    'kiosk_last_seen'   => time(),
+    'kiosk_csrf'        => 'armcsrf',
+    'kiosk_verify_vid'  => $voterIds['V9'],
+    'kiosk_verify_name' => 'E2E Voter',
+]);
+$armCookie = "PHPSESSID=$armId";
+
+$armIdx = http("$BASE/kiosk/index.php", null, $armCookie);
+check('armed verify offers the face step first', stripos($armIdx['body'], 'Start Face Check') !== false);
+
+$facePage = http("$BASE/kiosk/face_verify.php", null, $armCookie);
+check('face page renders for the armed citizen', $facePage['status'] === 200 && stripos($facePage['body'], 'blink twice') !== false, 'status ' . $facePage['status']);
+$noArmedFace = http("$BASE/kiosk/face_verify.php", null, "PHPSESSID=$cookieA");
+check('face page without an armed citizen redirects away', $noArmedFace['status'] === 302, 'status ' . $noArmedFace['status']);
+
+// Fingerprint done, face outstanding → the kiosk asks for the face check.
+$fpPending = kiosk_session_fp_only($SESS, $boothIds['A'], 'BOOTH-A', 'Booth A', $voterIds['V7'], 'csrfV7face');
+$pendIdx = http("$BASE/kiosk/index.php", null, "PHPSESSID=$fpPending");
+check('fingerprint-only kiosk asks for the face check', stripos($pendIdx['body'], 'Start Face Check') !== false);
+
+/* ================================================================== */
+/* 12. Booth reference-photo capture (in-person face enrollment)       */
+/* ================================================================== */
+section('12. Booth reference-photo capture (in-person face enrollment)');
+
+// The app stores captures under images/ (a real, shared directory), so track
+// what we create and remove it on the way out — even if a check fails.
+$captureCleanup = [];
+register_shutdown_function(function () use (&$captureCleanup) {
+    foreach ($captureCleanup as $f) {
+        if (is_string($f) && $f !== '' && is_file($f)) {
+            @unlink($f);
+        }
+    }
+});
+
+$refVid  = $voterIds['V9'];            // fixture voter: photo is the placeholder
+$capId   = 'cap' . bin2hex(random_bytes(8));
+write_session($SESS, $capId, [
+    'kiosk_booth_id'    => $boothIds['A'],
+    'kiosk_booth_code'  => 'BOOTH-A',
+    'kiosk_booth_name'  => 'Booth A',
+    'kiosk_started'     => time(),
+    'kiosk_last_seen'   => time(),
+    'kiosk_csrf'        => 'capcsrf',
+    'kiosk_verify_vid'  => $refVid,
+    'kiosk_verify_name' => 'E2E Voter',
+]);
+$capCookie = "PHPSESSID=$capId";
+
+// 1x1 PNG — a structurally valid image payload for the capture.
+$tinyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+$capJson = function (array $payload) use ($BASE, $capCookie) {
+    return http("$BASE/kiosk/face_api.php", json_encode($payload), $capCookie, ['Content-Type: application/json']);
+};
+
+// Before capture: the placeholder photo is not a usable reference.
+$before = json_decode($capJson(['action' => 'begin'])['body'], true);
+check('begin reports NO usable reference for a placeholder photo',
+    is_array($before) && ($before['has_reference'] ?? null) === false && ($before['photo_url'] ?? '') === '',
+    'has_reference=' . var_export($before['has_reference'] ?? null, true));
+
+// Capture a reference photo in person.
+$cap = json_decode($capJson(['action' => 'enroll_photo', 'snapshot' => $tinyPng])['body'], true);
+check('reference photo capture succeeds', !empty($cap['success']) && !empty($cap['photo_url']), 'message ' . ($cap['message'] ?? '-'));
+check('capture is attributed to the armed citizen', (int)($cap['voter_id'] ?? 0) === $refVid, 'voter ' . ($cap['voter_id'] ?? '?'));
+
+$name = basename((string)($cap['photo_url'] ?? ''));
+$filePath = $ROOT . '/images/' . $name;
+$captureCleanup[] = $filePath;
+check('captured reference file exists on disk', $name !== '' && is_file($filePath), $filePath);
+
+$storedStmt = $pdo->prepare("SELECT face_photo FROM voters WHERE id = ? LIMIT 1");
+$storedStmt->execute([$refVid]);
+$storedFace = trim((string)$storedStmt->fetchColumn());
+check('voters.face_photo now points at the capture', $storedFace === $name, 'face_photo=' . ($storedFace === '' ? '(empty)' : $storedFace));
+
+$enrollRows = (int)$pdo->query(
+    "SELECT COUNT(*) FROM biometric_logs WHERE method = 'face_enroll' AND booth_id = " . (int)$boothIds['A']
+)->fetchColumn();
+check('reference capture is audited against the booth', $enrollRows >= 1, "face_enroll rows: $enrollRows");
+
+// After capture: the reference is usable and resolved from the stored file.
+$after = json_decode($capJson(['action' => 'begin'])['body'], true);
+check('begin now reports a usable reference photo', !empty($after['has_reference']) && !empty($after['photo_url']), 'photo_url ' . ($after['photo_url'] ?? '-'));
+check('begin reference URL resolves to the stored capture', basename((string)($after['photo_url'] ?? '')) === $name);
+
+$capPage = http("$BASE/kiosk/face_verify.php", null, $capCookie);
+check('face page now shows the reference photo on file',
+    $capPage['status'] === 200 && stripos($capPage['body'], 'Reference photo on file') !== false, 'status ' . $capPage['status']);
+
+// Capture requires an armed citizen and a real image payload.
+$noTarget = json_decode(
+    http("$BASE/kiosk/face_api.php", json_encode(['action' => 'enroll_photo', 'snapshot' => $tinyPng]), "PHPSESSID=$cookieA", ['Content-Type: application/json'])['body'],
+    true
+);
+check('capture without an armed citizen is refused', ($noTarget['code'] ?? '') === 'NO_TARGET', 'code ' . ($noTarget['code'] ?? '-'));
+
+$badSnap = json_decode($capJson(['action' => 'enroll_photo', 'snapshot' => 'data:image/jpeg;base64,@@not-base64@@'])['body'], true);
+check('malformed snapshot is refused', ($badSnap['code'] ?? '') === 'PHOTO', 'code ' . ($badSnap['code'] ?? '-'));
+
+$emptySnap = json_decode($capJson(['action' => 'enroll_photo', 'snapshot' => ''])['body'], true);
+check('empty snapshot is refused', ($emptySnap['code'] ?? '') === 'PHOTO', 'code ' . ($emptySnap['code'] ?? '-'));
+
+$stillStored = $pdo->prepare("SELECT face_photo FROM voters WHERE id = ? LIMIT 1");
+$stillStored->execute([$refVid]);
+check('a refused capture does not overwrite the stored photo', trim((string)$stillStored->fetchColumn()) === $name);
 
 /* ================================================================== */
 /* Summary                                                             */

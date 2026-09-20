@@ -43,7 +43,8 @@ Each requirement is **testable**, traced to a business requirement, and carries 
 | **FR-4.2** | The face-match decision and threshold shall be enforced server-side. | Given a client claiming a match, when the server recomputes, then a client-only "verified" flag is ignored. | BR-02/BR-03 | Implemented | `voters/face_verify_api.php` |
 | **FR-4.3** | Fingerprint/passkey verification shall be available as the authoritative check. | Given an enrolled credential, when the citizen verifies, then the result is recorded. | BR-03 | Implemented | `webauthn_options.php` `verify_*`, `voters/verify_biometrics.php` |
 | **FR-4.4** | Every biometric attempt shall be logged with method, result, and context. | Given any attempt, when it completes, then a `biometric_logs` row exists. | BR-05 | Implemented | `biometric_logs` schema, `db.php` |
-| **FR-4.5** | A one-time nonce shall bind a verification to its attempt. | Given a completed verification, when the nonce is replayed, then it is rejected. | BR-02 | Implemented | `webauthn.php`, `face_verify_api.php` |
+| **FR-4.5** | A one-time nonce shall bind a verification to its attempt. | Given a completed verification, when the nonce is replayed, then it is rejected. | BR-02 | Implemented | `webauthn.php`, `face_verify_api.php`, `kiosk/face_api.php` |
+| **FR-4.6** | The booth face check shall require a blink-twice liveness challenge before matching. | Given a live capture, when the citizen blinks twice, then liveness passes and the match proceeds; otherwise the capture is not submitted. | BR-03 | Implemented | `kiosk/face_verify.php`, `js/blink-liveness.js` |
 
 ## E. Voter portal
 
@@ -65,12 +66,14 @@ Each requirement is **testable**, traced to a business requirement, and carries 
 | **FR-6.5** | Staff shall search citizens by name/email/EPIC. | Given a query, when submitted, then matching citizens are listed. | BR-03 | Implemented | `kiosk/index.php` |
 | **FR-6.6** | Staff shall enroll a citizen's fingerprint credential at the booth. | Given a citizen and a successful scan, then a `passkeys` row is created with the booth's `booth_id`. | BR-03/BR-08 | Implemented | `webauthn_options.php`, `kiosk/index.php` |
 | **FR-6.7** | Staff shall verify an enrolled citizen (identity check-in). | Given an enrolled citizen, when verified, then the outcome is recorded against the booth. | BR-03/BR-05 | Implemented | `webauthn_options.php` `verify_*` |
+| **FR-6.8** | A booth verification shall require a face check AND a fingerprint for the same citizen. | Given only one of the two, when the ballot is requested, then it is refused. | BR-03/BR-08 | Implemented | `kiosk/_kiosk.php` `kiosk_verified_voter()`, `kiosk/face_api.php` |
+| **FR-6.9** | Staff shall capture a reference face photo at the booth when none is usable. | Given a citizen whose photo is the placeholder, when a photo is captured, then `voters.face_photo` is set and used for later checks. | BR-03/BR-08 | Implemented | `kiosk/face_api.php` `enroll_photo` |
 
 ## G. Ballot casting & integrity
 
 | ID | Requirement | Acceptance criterion | BR | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| **FR-7.1** | A ballot shall open only after a recent successful fingerprint verification. | Given verification older than 120 s, when the ballot is requested, then it is refused. | BR-03 / BRULE-03 | Implemented | `kiosk/_kiosk.php`, `kiosk/ballot.php` |
+| **FR-7.1** | A ballot shall open only after a recent successful fingerprint verification AND a recent face check. | Given a missing or stale check (fingerprint > 120 s, face > 300 s), when the ballot is requested, then it is refused. | BR-03 / BRULE-03 | Implemented | `kiosk/_kiosk.php` `kiosk_verified_voter()`, `kiosk/ballot.php` |
 | **FR-7.2** | A booth shall issue a ballot only if the citizen's constituency matches the booth's. | Given a mismatched constituency, when the ballot is requested, then it is refused with a reason. | BR-01 / BRULE-01 | Implemented | `kiosk_ballot_eligibility()` |
 | **FR-7.3** | Only approved, not-yet-voted citizens shall be eligible. | Given `status != approved` or `has_voted = 1`, when submitting, then it is refused. | BR-02 / BRULE-02 | Implemented | `kiosk/vote.php` |
 | **FR-7.4** | A candidate shall receive a vote only if they stand in that constituency. | Given a candidate from another constituency, when submitted, then the update affects no row. | BR-01 / BRULE-04 | Implemented | `kiosk/vote.php` |

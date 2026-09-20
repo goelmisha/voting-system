@@ -6,7 +6,7 @@ refused at the wrong booth, one-person-one-vote, and the face biometric gate.
 
 | | |
 | --- | --- |
-| **Runtime** | ~12–14 min live (~8 min if you skip Acts 4 and 8) |
+| **Runtime** | ~14–16 min live (~10 min if you skip Acts 4 and 8) |
 | **Setup** | ~10 min, done **before** the audience arrives |
 | **Devices** | one laptop (two browser profiles) + one camera |
 | **Companion** | [`demo.md`](demo.md) is the short general demo; this is the two-booth version |
@@ -21,8 +21,8 @@ By the end, three claims must be *visibly* true:
    location, with no path into the admin console.
 2. **The region rule is enforced server-side** — a booth only issues a ballot to a
    citizen of *its own* constituency, and never twice to the same citizen.
-3. **Identity is verified server-side** — the face match is decided on the server
-   against a fixed threshold, with a single-use nonce and an audit trail.
+3. **Identity is verified server-side** — fingerprint and face (portal *and*
+   booth) are decided on the server, with a single-use nonce and an audit trail.
 
 ---
 
@@ -111,7 +111,9 @@ id 5) — it is the SMTP sending account, so the OTP arrives in its own inbox.
 ### 3.4 Make the face actually match
 
 Seeded photos are the generic `default.png` — face-api cannot match against it.
-Log in once and upload a real selfie:
+The **portal** face screen (Act 7) reads the profile photo, so upload a real selfie
+once for the citizen you will demo there. (The **booth** face check can instead
+capture a reference photo on the spot, so other citizens need no pre-upload.)
 
 1. `localhost:8000` → pick **Uttar Pradesh → Varanasi (PC-77)**
 2. Voter login → `you@example.com` / `Voter@123` → OTP
@@ -171,6 +173,10 @@ Whatever it does is attributed to this location — and it has no admin powers a
 **SAY** — "Citizens can't self-register online for security reasons. Their
 fingerprint credential is bound to their account **in person**, at the booth."
 
+> If a citizen still has the generic placeholder photo, the first face check will
+> offer **Capture Reference Photo** — take it once here; it is stored against the
+> citizen for later checks. (Arjun already has a real photo from §3.4.)
+
 **DO** — search **"Arjun"** → **Enroll** → scan / passkey prompt.
 Then search **"Suresh"** → **Enroll** → scan.
 
@@ -184,15 +190,17 @@ credential is a *public* key — no fingerprint image is ever stored.
 
 ---
 
-### Act 3 — Verify and cast the Varanasi ballot *(~90 s)* ← core
+### Act 3 — Verify and cast the Varanasi ballot *(~2 min)* ← core
 
-**SAY** — "Now the citizen proves identity. A successful verification opens a
-short two-minute window — after that the ballot is gone."
+**SAY** — "Now the citizen proves identity. Two checks are required — a face
+check and a fingerprint — and only then does the ballot open, for two minutes."
 
 **DO**
-1. search **"Arjun"** → **Verify** → scan / passkey
-2. → **🗳️ Open Ballot for Arjun Singh**
-3. point at the candidate list — read out two names — then select one → confirm
+1. search **"Arjun"** → **Verify**
+2. → **Step 1 — Start Face Check** → he blinks twice → the match is decided server-side
+3. back at the kiosk → **Step 2 — Verify Fingerprint** → scan / passkey
+4. → **🗳️ Open Ballot for Arjun Singh**
+5. point at the candidate list — read out two names — then select one → confirm
 
 **EXPECT**
 - Index shows **"Open Ballot for Arjun Singh"** with **Constituency: Varanasi (PC-77)** and a countdown (~120 s).
@@ -228,7 +236,7 @@ submit or a race cannot record twice.
 that makes the ballot trustworthy."
 
 **DO** — Right window → `kiosk/login.php` → `BOOTH-002` / `654321` → **Unlock Kiosk**
-→ search **"Suresh"** (a *Varanasi* citizen) → **Verify** → scan / passkey.
+→ search **"Suresh"** (a *Varanasi* citizen) → **Verify** → face check → fingerprint.
 
 **EXPECT** — Identity verification **succeeds** (he is who he says he is), and then:
 
@@ -246,7 +254,7 @@ CSS trick; `kiosk/vote.php` re-checks it inside the transaction.
 **SAY** — "Now a citizen who *does* belong here."
 
 **DO** — still in the Booth 002 window → search **"Rohit"** → **Enroll** → scan
-→ search **"Rohit"** → **Verify** → **Open Ballot** → select → confirm.
+→ search **"Rohit"** → **Verify** (face check → fingerprint) → **Open Ballot** → select → confirm.
 
 **EXPECT** — The ballot lists **Hyderabad** candidates: **Asaduddin Owaisi**,
 **Madhavi Latha Kompella**, … — **completely different names and parties** from
@@ -278,6 +286,13 @@ mark itself verified."
 **📸 Shot 11** — the live face-capture overlay.
 **📸 Shot 12** — a successful match (with distance).
 **📸 Shot 13** — a deliberate mismatch.
+
+> **Say if asked:** the booth also runs a face check — that is the one used in
+> Acts 3/5/6. This portal screen is the *same* check wired to a voter session
+> rather than a kiosk, and it authorizes nothing by itself. All three paths
+> (portal face, kiosk face, kiosk fingerprint) share the server-side decision and
+> the `biometric_logs` audit trail; only the kiosk pair feeds
+> `kiosk_verified_voter()`.
 
 ---
 
@@ -356,11 +371,11 @@ rm voting_system.db.demo-backup        # once you no longer need it
 | Segment | Time |
 | --- | --- |
 | Acts 0–2 (booths, unlock, enroll) | 3.5 min |
-| Acts 3–6 (ballot, one-vote, mismatch, second booth) | 5 min |
+| Acts 3–6 (ballot, one-vote, mismatch, second booth) | 6.5 min |
 | Act 7 (face) | 2 min |
 | Act 8 (results) | 45 s |
-| **Core demo (skip 4 & 8)** | **~8.5 min** |
-| **Full run** | **~12–14 min** |
+| **Core demo (skip 4 & 8)** | **~10 min** |
+| **Full run** | **~14–16 min** |
 
 ---
 

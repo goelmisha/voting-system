@@ -125,8 +125,15 @@ if ($verified_vid > 0 && $armed === null && $verified_name === '') {
 $receipt = $_SESSION['booth_vote_receipt'] ?? null;
 unset($_SESSION['booth_vote_receipt']);
 
-// Is there a LIVE ballot authorization (fingerprint verified moments ago)?
-$ballot_auth = ($armed === null) ? kiosk_verified_voter() : null;
+// Biometric progress for the citizen currently at the kiosk. A ballot needs
+// BOTH a fingerprint verification and (while KIOSK_REQUIRE_FACE is on) a face
+// check for the same person.
+$fp_auth   = kiosk_fingerprint_verified_voter();
+$face_auth = kiosk_face_verified_voter();
+$both_done = $fp_auth !== null && $face_auth !== null && $fp_auth['voter_id'] === $face_auth['voter_id'];
+
+// Is there a LIVE ballot authorization (both checks done moments ago)?
+$ballot_auth = ($armed === null && $both_done) ? kiosk_verified_voter() : null;
 $ballot_el   = null;
 if ($ballot_auth !== null) {
     $ballot_el = kiosk_ballot_eligibility($pdo, (int)$ballot_auth['voter_id'], $booth['id']);
@@ -134,6 +141,16 @@ if ($ballot_auth !== null) {
         ? $verified_name
         : ($ballot_el['voter']['fullname'] ?? ('Voter #' . (int)$ballot_auth['voter_id']));
 }
+
+// Fingerprint done but the face check still outstanding → offer the face step.
+$need_face = ($armed === null && $fp_auth !== null && !$both_done);
+$face_pending_name = $need_face
+    ? ($verified_name !== '' ? $verified_name : ('Voter #' . (int)$fp_auth['voter_id']))
+    : '';
+
+// Has the face check already passed for the citizen currently armed to verify?
+$armed_face_done = ($armed !== null && $armed_action === 'verify'
+    && $face_auth !== null && $face_auth['voter_id'] === (int)$armed['id']);
 
 $expired = isset($_GET['expired']);
 
@@ -229,9 +246,21 @@ function status_pill(string $status): string
 
             <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2">Next citizen</a>
         </div>
+    <?php elseif ($need_face): ?>
+        <!-- Fingerprint verified; the face check is still outstanding -->
+        <div class="kiosk-card verify">
+            <div class="text-center mb-3">
+                <div class="big-icon">🖐️</div>
+                <h5 class="font-weight-bold mb-1">Fingerprint verified</h5>
+                <div class="voter-chip mb-2"><?= htmlspecialchars($face_pending_name); ?></div>
+                <div class="small text-muted">One more step — the face check is required before the ballot opens.</div>
+            </div>
+            <a href="face_verify.php" class="btn btn-primary w-100 scan-btn font-weight-bold">🙂 Start Face Check</a>
+            <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2">Next citizen</a>
+        </div>
     <?php elseif ($expired || $verified_vid > 0): ?>
         <div class="alert alert-warning mt-3 mb-0 text-center small">
-            ⏱️ Verification expired or was cleared. Verify the citizen's fingerprint again to open their ballot.
+            ⏱️ Verification expired or was cleared. Verify the citizen's fingerprint and face again to open their ballot.
         </div>
     <?php endif; ?>
 
@@ -242,7 +271,7 @@ function status_pill(string $status): string
             <div class="text-center mb-3">
                 <div class="big-icon"><?= $is_enroll ? '🖐️' : '🔎'; ?></div>
                 <h4 class="font-weight-bold mb-1">
-                    <?= $is_enroll ? 'Enroll Fingerprint' : 'Verify Fingerprint'; ?>
+                    <?= $is_enroll ? 'Enroll Fingerprint' : 'Verify Citizen'; ?>
                 </h4>
                 <div class="voter-chip mb-2">
                     <?= htmlspecialchars($armed['fullname']); ?> · <?= htmlspecialchars($armed['email']); ?>
@@ -254,17 +283,34 @@ function status_pill(string $status): string
                 </div>
             </div>
 
+            <?php if (!$is_enroll && KIOSK_REQUIRE_FACE): ?>
+                <div class="alert <?= $armed_face_done ? 'alert-success' : 'alert-info'; ?> text-center small">
+                    <?php if ($armed_face_done): ?>
+                        ✅ Face check passed. <strong>Step 2:</strong> scan the fingerprint to finish.
+                    <?php else: ?>
+                        <strong>Step 1:</strong> face check (blink twice).
+                        <strong>Step 2:</strong> fingerprint. Both are required.
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <?php if (!$is_enroll && (int)$armed['fp_count'] === 0): ?>
                 <div class="alert alert-warning text-center small">
                     This citizen has no fingerprint enrolled yet — use <strong>Enroll</strong> first.
                 </div>
             <?php endif; ?>
 
+            <?php if (!$is_enroll && KIOSK_REQUIRE_FACE && !$armed_face_done): ?>
+                <a href="face_verify.php" class="btn btn-primary w-100 scan-btn font-weight-bold mb-2">
+                    🙂 Step 1 — Start Face Check
+                </a>
+            <?php endif; ?>
+
             <div id="scanStatus" class="alert alert-info py-2 text-center d-none"></div>
 
             <button id="scanBtn" class="btn btn-custom w-100 scan-btn"
                     data-action="<?= $is_enroll ? 'enroll' : 'verify'; ?>">
-                <span id="scanBtnLabel"><?= $is_enroll ? 'Start Scan' : 'Verify Now'; ?></span>
+                <span id="scanBtnLabel"><?= $is_enroll ? 'Start Scan' : ($armed_face_done ? 'Step 2 — Verify Fingerprint' : 'Verify Fingerprint'); ?></span>
             </button>
 
             <a href="index.php?mode=clear" class="btn btn-outline-secondary w-100 mt-2">Cancel — choose a different citizen</a>

@@ -23,6 +23,7 @@ All six phases are in place:
 | 6 — Connectivity | Caveat documented below |
 | 7 — Booth voting | Ballot cast on the kiosk device (`kiosk/ballot.php`, `kiosk/vote.php`); authorization bound to the just-verified citizen, ~2-min window, consumed on submit; `voters.constituency` + booth constituency matching; setup via booth **Edit** and `scripts/assign_constituency.php` |
 | 8 — Consolidation | Self-service voting removed: `voters/vote.php` deleted and the voter dashboard is now view-only (identity verification, face + fingerprint, kept). Admin-side enroll console removed: `admin/enroll_voter.php` → `admin/onboard_voter.php`, which only creates the citizen record — fingerprint enrollment happens at the kiosk. `wa_booth_enrollment()` is kiosk-only. |
+| 9 — Booth face check | Face is a required **second** biometric at the booth. `kiosk/face_verify.php` runs a camera capture with a blink-twice liveness challenge (`js/blink-liveness.js`, adaptive EAR); `kiosk/face_api.php` decides the match server-side, with a single-use nonce and `biometric_logs` rows carrying `booth_id`. `voters.face_photo` stores an in-person reference capture when no usable photo exists. `kiosk_verified_voter()` now needs **both** a face check and a fingerprint — flip `KIOSK_REQUIRE_FACE` to relax that. |
 
 ### Using the kiosk
 
@@ -34,8 +35,10 @@ php -S localhost:8000      # WebAuthn needs HTTPS or localhost
 1. Admin console → **📍 Booths & Kiosks** → create a booth (or use the seeded
    `BOOTH-001` / PIN `123456`).
 2. On the booth phone, open `kiosk/login.php` and unlock with the booth code + PIN.
-3. Search by name / email / EPIC → **Enroll** (bind a fingerprint) or **Verify**
-   (identity check-in).
+3. Search by name / email / EPIC → **Enroll** (bind a fingerprint) or **Verify**.
+   Verify runs two required steps: **face check** (blink twice; capture a reference
+   photo first if the citizen has none) and then **fingerprint**. Both must pass for
+   the same citizen before the ballot opens.
 4. Every enrollment/verification is logged against that `booth_id` in
    `biometric_logs`; enrolled passkeys carry the `booth_id` they came from.
 5. For a ballot, the booth and the citizen must share a constituency: set the

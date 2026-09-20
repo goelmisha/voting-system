@@ -11,7 +11,7 @@ A PHP + SQLite web application that simulates a secure national (Lok Sabha) elec
 - **Passkey-first login** — sign in with a fingerprint / WebAuthn passkey (cross-device "a phone or tablet" approval supported), with email + password fallback
 - **Two-factor authentication** — 6-digit OTP sent over Gmail SMTP (email) and Fast2SMS (mobile), valid for 5 minutes
 - **Pre-vote workflow** — a 3-step declaration screen before the dashboard unlocks
-- **Identity verification** — live webcam capture matched against the registered photo using face-api.js 128-d descriptors, plus fingerprint/passkey verification; the match decision, threshold, one-time nonce, snapshot, and IP are handled/audited server-side
+- **Identity verification** — live webcam capture matched against the registered photo using face-api.js 128-d descriptors, plus fingerprint/passkey verification; the match decision, threshold, one-time nonce, snapshot, and IP are handled/audited server-side. This face check (`voters/face_verify.php` + `voters/face_verify_api.php`) is **portal-only**: it confirms identity and sets a `face_verified` session flag shown on the dashboard. It does **not** authorize a ballot — a booth-kiosk ballot is unlocked only by a fresh *fingerprint* verification (`kiosk_verified_voter()`).
 - **View-only portal** — view certified candidates and manage your profile. **Ballots are cast in person at a booth kiosk** (see below); the portal no longer casts votes.
 - **Ballot integrity** — one vote per voter, enforced at the booth kiosk with a live re-check + atomic conditional UPDATE
 - **Party symbols & logos** — real Indian national/state party logos with ECI-style symbol rendering### Admin console (`/admin`)
@@ -30,14 +30,23 @@ in the admin console) unlocks the kiosk for *that location only*. The kiosk
 session has no admin powers.
 - **Enroll** — search a citizen by name / email / EPIC and bind their
 fingerprint/passkey to their account, recorded against the booth.
-- **Verify** — confirm a citizen matches an *already enrolled* credential
-(identity check-in), also recorded against the booth.
-- **Cast ballot on the kiosk** — right after a successful verification the kiosk
-opens the citizen's ballot, they choose and confirm on the device, and the vote
-is recorded with the existing one-vote transaction (atomic; a double submit
-cannot record twice). Only available when the citizen's constituency matches the
-booth's; the authorization expires ~2 minutes after the fingerprint check and is
-consumed on submit.
+- **Verify (two required steps)** — confirm a citizen's identity with **both** a
+face check and a fingerprint/passkey scan, each recorded against the booth:
+  1. **Face check** — a live camera capture is matched to the citizen's reference
+     photo after a **blink-twice liveness** challenge (adaptive eye-aspect-ratio,
+     not a fixed cutoff). The match decision is server-side (`kiosk/face_api.php`).
+     If the citizen has no usable photo, the operator captures a reference photo
+     in person (stored as `voters.face_photo`).
+  2. **Fingerprint** — the WebAuthn scan, as before.
+
+  A ballot needs **both**; set `KIOSK_REQUIRE_FACE = false` in `kiosk/_kiosk.php`
+  to make the face check optional.
+- **Cast ballot on the kiosk** — right after both checks pass the kiosk opens the
+citizen's ballot, they choose and confirm on the device, and the vote is recorded
+with the existing one-vote transaction (atomic; a double submit cannot record
+twice). Only available when the citizen's constituency matches the booth's; the
+authorization expires ~2 minutes after the fingerprint scan (the face check stays
+valid 5 minutes) and is consumed on submit.
 - **Auto-lock** — the kiosk re-locks after 5 minutes of inactivity; unlock
 attempts are rate-limited per device.
 - Biometric data never leaves the device; the booth stores only a public
@@ -49,15 +58,33 @@ credential. Enrollments/verifications are logged in `biometric_logs` with the
 A booth only issues a ballot when the citizen's constituency matches the booth's,
 so both need a constituency:
 
+0. **Get the citizen into the database first.** There is no self-service sign-up
+   (`register.php` is disabled). Use **Admin console → ➕ Onboard Citizen**
+   (`admin/onboard_voter.php`): full name, email, EPIC, mobile, **constituency**,
+   status (defaults to *Approved now*), and a temporary password. Creating the
+   citizen and assigning their constituency happen in the *same* form, so a
+   walk-in who is not yet in the DB gets both in one step.
 1. **Admin console → 📍 Booths & Kiosks → Edit** → set the booth's State /
    Constituency (must match a seeded constituency exactly, e.g. `Varanasi (PC-77)`).
-2. Give citizens a constituency — via **Enroll Voter** walk-in onboarding, or in
-   bulk:
+2. Give existing citizens a constituency — per record via **Onboard Citizen**, or
+   in bulk:
    ```bash
    php scripts/assign_constituency.php list
    php scripts/assign_constituency.php assign "Varanasi (PC-77)" --blank
    ```
-3. At the kiosk: search → **Verify** → **Open Ballot** → citizen chooses → confirm.
+   `--blank` fills only citizens that have none; `--all`, `--email=`, `--epic=`, and
+   `--id=` are also supported (see the script header).
+3. At the kiosk: search → **Enroll** (first time) → **Verify** (face check, then
+   fingerprint) → **Open Ballot** → citizen chooses → confirm.
+
+> The citizen's face check needs a usable photo. If the registration photo is the
+> generic placeholder, the face page offers **Capture Reference Photo** — an
+> in-person capture at the booth, stored as `voters.face_photo`.
+
+The constituency string must match the booth's **exactly** (including the `(PC-nn)`
+suffix), and at least one candidate must exist for that exact string, or the booth
+opens an empty ballot. A citizen with no constituency is refused with
+*"No constituency is assigned to this citizen."*
 
 > The demo DB seeds booth **`BOOTH-001` / PIN `123456`** (no constituency until you
 > set one). WebAuthn requires HTTPS or localhost — for a real kiosk, pin a stable

@@ -123,4 +123,8 @@ vs_add_column($pdo, 'biometric_logs', 'booth_id', 'booth_id INTEGER DEFAULT NULL
 // A voter's Parliamentary Constituency — determines which ballot they get at
 // a booth kiosk. Matched against booths.constituency before a ballot is shown.
 vs_add_column($pdo, 'voters', 'constituency', "constituency TEXT DEFAULT ''");
+
+// A face reference photo captured in person at the booth kiosk. Used for the
+// booth face check when present; falls back to the profile photo when empty.
+vs_add_column($pdo, 'voters', 'face_photo', "face_photo TEXT DEFAULT ''");
 ?>
