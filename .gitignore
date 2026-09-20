@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------------------
+# Voting System — ignore rules
+# Governed by: docs/process/policies/configuration-management.md §4
+# ---------------------------------------------------------------------------
+
+# --- Secrets: never versioned (Security & Secrets Policy §2.1) ---
+includes/config.php
+.env
+.env.*
+*.pem
+*.key
+
+# --- Runtime data: never versioned (CM Policy §4) ---
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# --- Dependencies: reproducible via Composer ---
+/vendor/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Build / test output ---
+/coverage/
+*.log
