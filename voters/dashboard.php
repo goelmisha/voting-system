@@ -288,7 +288,7 @@ try {
                                     <th style="width: 10%;">S.No.</th>
                                     <th style="width: 25%;">Symbol</th>
                                     <th style="width: 45%;">Candidate & Party</th>
-                                    <th style="width: 20%;">Status</th>
+                                    <th style="width: 20%;">Your Vote</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -323,10 +323,10 @@ try {
                                                 <?php endif; ?>
                                             </td>
                                             <td class="align-middle">
-                                                <?php if (!$has_voted): ?>
-                                                    <span class="badge badge-info px-2 py-1">Vote at your booth</span>
+                                                <?php if ($has_voted): ?>
+                                                    <span class="text-muted">&mdash;</span>
                                                 <?php else: ?>
-                                                    <span class="badge badge-success px-2 py-1">Voted</span>
+                                                    <span class="badge badge-info px-2 py-1">Vote at your booth</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
