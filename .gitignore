@@ -12,12 +12,25 @@ includes/config.php
 
 # --- Runtime data: never versioned (CM Policy §4) ---
 *.db
-*.db-journal
+*.db-*
+*.db.*
 *.sqlite
 *.sqlite3
 
 # --- Dependencies: reproducible via Composer ---
 /vendor/
+
+# --- User-uploaded media: never commit real people's photos ---
+# Uploads land in images/ named <timestamp>_<kind>_<uniqid>.<ext>.
+# These are PERSONAL DATA. Party logos (images/*_party_*) are app assets
+# and stay tracked; only per-person uploads are excluded.
+images/*_voter_*
+images/*_photo_*
+images/*_doc_*
+images/*_candidate_*
+images/face_audit/
+# Booth-captured face reference photos (voters.face_photo)
+images/reference_*
 
 # --- OS / editor cruft ---
 .DS_Store
