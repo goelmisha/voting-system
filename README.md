@@ -160,7 +160,9 @@ in a later commit does not remove it from history. See
 ├── voters/                    # Voter dashboard (view-only), pre-vote workflow, identity verification (face/fingerprint)
 ├── includes/                  # webauthn.php, party_symbols.php, connection.php
 ├── images/                    # Voter photos, candidate photos, party logos
-├── scripts/                   # fetch_party_logos.php
+├── demo.md                    # short end-to-end demo guide
+├── demo-two-booths.md         # two-booth / regional-rules presentation script
+├── scripts/                   # fetch_party_logos.php, demo/ and tests/ helpers
 ├── bootstrap/, css/, js/      # Front-end assets
 └── .github/workflows/php.yml  # CI: composer validate + install
 ```

@@ -2,6 +2,10 @@
 
 How to prep for and run an end-to-end demo (~8 minutes).
 
+> For the **two-booth / regional-rules presentation** (two booths in different
+> constituencies, a citizen refused at the wrong booth, and the face gate), see
+> [`demo-two-booths.md`](demo-two-booths.md). This file remains the short general demo.
+
 ---
 
 ## ⚠️ Prep before demoing (5 min)
